@@ -1,27 +1,21 @@
 package collector;
 
+import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.example.proxy.HexDumpProxy;
 import io.netty.handler.codec.http.*;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.util.CharsetUtil;
+import io.netty.handler.logging.ByteLoggingHandler;
+import io.netty.handler.logging.LogLevel;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,10 +30,6 @@ public class Main {
     private static final int SERVER_PORT = 8080;
 
     public static void main(String[] args) throws Exception {
-        HexDumpProxy.main(new String[] {"8080", "www.google.com", "80"});
-    }
-
-    public static void maina(String[] args) throws Exception {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -50,14 +40,16 @@ public class Main {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
+                        p.addFirst(new ByteLoggingHandler(LogLevel.INFO));
                         // Uncomment the following line if you want HTTPS
                         //SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
                         //engine.setUseClientMode(false);
                         //p.addLast("ssl", new SslHandler(engine));
-                        p.addLast("decoder", new HttpRequestDecoder());
+                        p.addLast("decode", new HttpRequestDecoder());
+                        p.addLast("encode", new HttpResponseEncoder());
+                        //p.addLast("decode", new HttpResponseDecoder());
                         // Uncomment the following line if you don't want to handle HttpChunks.
                         //p.addLast("aggregator", new HttpObjectAggregator(1048576));
-                        p.addLast("encoder", new HttpResponseEncoder());
                         // Remove the following line if you don't want automatic content compression.
                         //p.addLast("deflater", new HttpContentCompressor());
                         p.addLast("handler", new FrontendHandler());
@@ -74,33 +66,9 @@ public class Main {
 
     static class FrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
-        private HttpRequest request;
-        /** Buffer that stores the response content */
-        private final StringBuilder buf = new StringBuilder();
-
-        @Override
-        public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-            if (msg instanceof HttpRequest) {
-                HttpRequest request = this.request = (HttpRequest) msg;
-
-                if (is100ContinueExpected(request)) {
-                    send100Continue(ctx);
-                }
-
-            }
-
-            if (msg instanceof HttpContent) {
-                HttpContent httpContent = (HttpContent) msg;
-
-                if (msg instanceof LastHttpContent) {
-                    LastHttpContent trailer = (LastHttpContent) msg;
-                }
-            }
-        }
+        private ChannelFuture backendFuture;
 
         private static URI createBackendUriFromFrontendReq(HttpRequest req) throws Exception {
-            //String rawHttpHeader = req.toString();
-
             Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?");
             Matcher matcher = pattern.matcher(getHost(req));
             matcher.find();
@@ -123,22 +91,114 @@ public class Main {
             return outboundRequest;
         }
 
+        @Override
+        public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (msg instanceof HttpRequest) {
+                HttpRequest req = (HttpRequest) msg;
+
+                URI backendUri = createBackendUriFromFrontendReq(req);
+                final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
+                final Channel inboundChannel = ctx.channel();
+
+                System.out.println(req);
+
+                Bootstrap b = new Bootstrap();
+                b.group(inboundChannel.eventLoop())
+                    .channel(ctx.channel().getClass())
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        public void initChannel(SocketChannel ch) throws Exception {
+                            ChannelPipeline p = ch.pipeline();
+                            p.addFirst(new ByteLoggingHandler(LogLevel.INFO));
+                            p.addLast("encode", new HttpRequestEncoder());
+                            p.addLast("decode", new HttpResponseDecoder());
+                            p.addLast("inflater", new HttpContentDecompressor());
+                            p.addLast("handler", new BackendHandler(inboundChannel));
+                        }
+                    });
+                backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
+                backendFuture.addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        System.out.println("operationComplete: " + future);
+                        System.out.println("isActive(): " + future.channel().isActive());
+                        System.out.println("isOpen(): " + future.channel().isOpen());
+                        future.channel().outboundMessageBuffer().add(backendReq);
+                    }
+                });
+
+                if (is100ContinueExpected(req)) {
+                    send100Continue(ctx);
+                }
+
+            }
+
+            if (msg instanceof HttpContent) {
+                final HttpContent httpContent = (HttpContent) msg;
+
+                backendFuture.addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        System.out.println("adding content");
+                        future.channel().outboundMessageBuffer().add(httpContent.content());
+                    }
+                });
+
+                if (msg instanceof LastHttpContent) {
+                    LastHttpContent trailer = (LastHttpContent) msg;
+                }
+            }
+        }
+
         private static void send100Continue(ChannelHandlerContext ctx) {
             FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, CONTINUE);
             ctx.nextOutboundMessageBuffer().add(response);
         }
 
         @Override
-        public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-            ctx.flush();
+        public void endMessageReceived(final ChannelHandlerContext ctx) throws Exception {
+            backendFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    System.out.println("flushing");
+                    future.channel().flush();
+                }
+            });
         }
 
         @Override
-        public void exceptionCaught(
-                ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
             cause.printStackTrace();
             ctx.close();
         }
 
+        static class BackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
+            private Channel inboundChannel;
+
+            public BackendHandler(Channel inboundChannel) {
+                this.inboundChannel = inboundChannel;
+            }
+
+            @Override
+            public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+                System.out.println("messageReceived in backend: " + msg);
+                System.out.println("isOpen: " + inboundChannel.isOpen());
+                System.out.println("isActive: " + inboundChannel.isActive());
+                inboundChannel.outboundMessageBuffer().add(msg);
+            }
+
+            @Override
+            public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
+                inboundChannel.flush();
+                ctx.flush();
+                //ctx.close();
+            }
+
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                cause.printStackTrace();
+                ctx.close();
+            }
+        }
     }
 }

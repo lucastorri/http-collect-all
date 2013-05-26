@@ -45,7 +45,7 @@ public class HexDumpProxy {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
              .channel(NioServerSocketChannel.class)
-             .childHandler(new HexDumpProxyInitializer(remoteHost, remotePort))
+             .childHandler(new HexDumpProxyInitializer())
              .childOption(ChannelOption.AUTO_READ, false)
              .bind(localPort).sync().channel().closeFuture().sync();
         } finally {

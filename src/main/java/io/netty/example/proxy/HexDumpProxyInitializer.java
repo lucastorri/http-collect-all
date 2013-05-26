@@ -25,20 +25,12 @@ import io.netty.handler.logging.LogLevel;
 
 public class HexDumpProxyInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final String remoteHost;
-    private final int remotePort;
-
-    public HexDumpProxyInitializer(String remoteHost, int remotePort) {
-        this.remoteHost = remoteHost;
-        this.remotePort = remotePort;
-    }
-
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
         ch.pipeline().addLast(
             new ByteLoggingHandler(LogLevel.INFO),
-            //new HttpRequestDecoder(),
-            //new HttpResponseEncoder(),
-            new HexDumpProxyFrontendHandler(remoteHost, remotePort));
+            new HttpRequestDecoder(),
+            new HttpResponseEncoder(),
+            new HexDumpProxyFrontendHandler());
     }
 }
