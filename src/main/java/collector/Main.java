@@ -2,6 +2,7 @@ package collector;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -13,6 +14,7 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.logging.ByteLoggingHandler;
 import io.netty.handler.logging.LogLevel;
+import io.netty.util.CharsetUtil;
 
 import java.net.URI;
 import java.util.Map;
@@ -68,6 +70,10 @@ public class Main {
 
         private ChannelFuture backendFuture;
 
+        {
+            System.out.println(FrontendHandler.class);
+        }
+
         private static URI createBackendUriFromFrontendReq(HttpRequest req) throws Exception {
             Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?");
             Matcher matcher = pattern.matcher(getHost(req));
@@ -98,12 +104,12 @@ public class Main {
 
                 URI backendUri = createBackendUriFromFrontendReq(req);
                 final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
-                final Channel inboundChannel = ctx.channel();
+                final Channel frontendChannel = ctx.channel();
 
                 System.out.println(req);
 
                 Bootstrap b = new Bootstrap();
-                b.group(inboundChannel.eventLoop())
+                b.group(frontendChannel.eventLoop())
                     .channel(ctx.channel().getClass())
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -113,7 +119,7 @@ public class Main {
                             p.addLast("encode", new HttpRequestEncoder());
                             p.addLast("decode", new HttpResponseDecoder());
                             p.addLast("inflater", new HttpContentDecompressor());
-                            p.addLast("handler", new BackendHandler(inboundChannel));
+                            p.addLast("handler", new BackendHandler(frontendChannel));
                         }
                     });
                 backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
@@ -146,6 +152,13 @@ public class Main {
 
                 if (msg instanceof LastHttpContent) {
                     LastHttpContent trailer = (LastHttpContent) msg;
+                    backendFuture.addListener(new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            System.out.println("reading backend");
+                            //future.channel().read();
+                        }
+                    });
                 }
             }
         }
@@ -173,25 +186,25 @@ public class Main {
         }
 
         static class BackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
-            private Channel inboundChannel;
 
-            public BackendHandler(Channel inboundChannel) {
-                this.inboundChannel = inboundChannel;
+            private Channel frontendChannel;
+
+            public BackendHandler(Channel frontendChannel) {
+                this.frontendChannel = frontendChannel;
             }
 
             @Override
             public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-                System.out.println("messageReceived in backend: " + msg);
-                System.out.println("isOpen: " + inboundChannel.isOpen());
-                System.out.println("isActive: " + inboundChannel.isActive());
-                inboundChannel.outboundMessageBuffer().add(msg);
+                if (msg instanceof HttpContent) {
+                    msg = ((HttpContent) msg).copy();
+                }
+                frontendChannel.write(msg);
             }
 
             @Override
             public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-                inboundChannel.flush();
-                ctx.flush();
-                //ctx.close();
+                frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
+                ctx.flush().addListener(ChannelFutureListener.CLOSE);
             }
 
             @Override
