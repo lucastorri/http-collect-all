@@ -2,29 +2,25 @@ package collector;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.logging.ByteLoggingHandler;
 import io.netty.handler.logging.LogLevel;
-import io.netty.util.CharsetUtil;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.netty.handler.codec.http.HttpHeaders.Names.*;
-import static io.netty.handler.codec.http.HttpHeaders.*;
-import static io.netty.handler.codec.http.HttpResponseStatus.*;
-import static io.netty.handler.codec.http.HttpVersion.*;
+import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
+import static io.netty.handler.codec.http.HttpHeaders.getHost;
+import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
+import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 
 public class Main {
@@ -70,17 +66,14 @@ public class Main {
 
         private ChannelFuture backendFuture;
 
-        {
-            System.out.println(FrontendHandler.class);
-        }
-
-        private static URI createBackendUriFromFrontendReq(HttpRequest req) throws Exception {
-            Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?");
+        private static URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
+            Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?"); //TODO use server port for both http and https and learn if destination is secure from that
             Matcher matcher = pattern.matcher(getHost(req));
             matcher.find();
             String destHost = matcher.group(1);
-            String destScheme = matcher.group(2) != null && !matcher.group(2).isEmpty() ? "https://" : "http://";
-            int destPort = 80; //TODO get local SERVER_PORT from req
+            boolean isHttps = matcher.group(2) != null && !matcher.group(2).isEmpty();
+            String destScheme = isHttps ? "https://" : "http://";
+            int destPort = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
             String destPathAndQueryString = req.getUri();
 
             URI destUri = new URI(destScheme + destHost + ":" + destPort + destPathAndQueryString);
@@ -102,11 +95,11 @@ public class Main {
             if (msg instanceof HttpRequest) {
                 HttpRequest req = (HttpRequest) msg;
 
-                URI backendUri = createBackendUriFromFrontendReq(req);
+                URI backendUri = createBackendUriFromFrontendReq(req, ctx);
                 final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
                 final Channel frontendChannel = ctx.channel();
 
-                System.out.println(req);
+                final boolean ssl = "https".equals(backendUri.getScheme());
 
                 Bootstrap b = new Bootstrap();
                 b.group(frontendChannel.eventLoop())
@@ -116,6 +109,11 @@ public class Main {
                         public void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline p = ch.pipeline();
                             p.addFirst(new ByteLoggingHandler(LogLevel.INFO));
+
+                            if (ssl) {
+                                //TODO
+                            }
+
                             p.addLast("encode", new HttpRequestEncoder());
                             p.addLast("decode", new HttpResponseDecoder());
                             p.addLast("inflater", new HttpContentDecompressor());
@@ -126,9 +124,6 @@ public class Main {
                 backendFuture.addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
-                        System.out.println("operationComplete: " + future);
-                        System.out.println("isActive(): " + future.channel().isActive());
-                        System.out.println("isOpen(): " + future.channel().isOpen());
                         future.channel().outboundMessageBuffer().add(backendReq);
                     }
                 });
@@ -145,20 +140,13 @@ public class Main {
                 backendFuture.addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
-                        System.out.println("adding content");
                         future.channel().outboundMessageBuffer().add(httpContent.content());
                     }
                 });
 
                 if (msg instanceof LastHttpContent) {
                     LastHttpContent trailer = (LastHttpContent) msg;
-                    backendFuture.addListener(new ChannelFutureListener() {
-                        @Override
-                        public void operationComplete(ChannelFuture future) throws Exception {
-                            System.out.println("reading backend");
-                            //future.channel().read();
-                        }
-                    });
+                    //TODO  trailer.trailingHeaders();
                 }
             }
         }
@@ -173,7 +161,6 @@ public class Main {
             backendFuture.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
-                    System.out.println("flushing");
                     future.channel().flush();
                 }
             });
@@ -185,33 +172,34 @@ public class Main {
             ctx.close();
         }
 
-        static class BackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
+    }
 
-            private Channel frontendChannel;
+    static class BackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
-            public BackendHandler(Channel frontendChannel) {
-                this.frontendChannel = frontendChannel;
+        private Channel frontendChannel;
+
+        public BackendHandler(Channel frontendChannel) {
+            this.frontendChannel = frontendChannel;
+        }
+
+        @Override
+        public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (msg instanceof HttpContent) {
+                msg = ((HttpContent) msg).copy();
             }
+            frontendChannel.write(msg);
+        }
 
-            @Override
-            public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-                if (msg instanceof HttpContent) {
-                    msg = ((HttpContent) msg).copy();
-                }
-                frontendChannel.write(msg);
-            }
+        @Override
+        public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
+            frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
+            ctx.flush().addListener(ChannelFutureListener.CLOSE);
+        }
 
-            @Override
-            public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-                frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
-                ctx.flush().addListener(ChannelFutureListener.CLOSE);
-            }
-
-            @Override
-            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                cause.printStackTrace();
-                ctx.close();
-            }
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            cause.printStackTrace();
+            ctx.close();
         }
     }
 }
