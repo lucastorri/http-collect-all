@@ -1,14 +1,19 @@
 package collector.http;
 
+import collector.ProtocolDefinerHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.example.securechat.SecureChatSslContextFactory;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.ByteLoggingHandler;
 import io.netty.handler.logging.LogLevel;
+import io.netty.handler.ssl.SslHandler;
 
+import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,15 +27,19 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
     private ChannelFuture backendFuture;
+    private List<ProtocolDefinerHandler.Protocol> frontendProtocols;
 
-    private static URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
+    public HttpFrontendHandler(List<ProtocolDefinerHandler.Protocol> frontendProtocols) {
+        this.frontendProtocols = frontendProtocols;
+    }
+
+    private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
         //TODO add bucket to pattern (optional)
-        Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?"); //TODO use server port for both http and https and learn if destination is secure from that
+        Pattern pattern = Pattern.compile("(.*)\\.local"); //TODO use server port for both http and https and learn if destination is secure from that
         Matcher matcher = pattern.matcher(getHost(req));
         matcher.find();
         String destHost = matcher.group(1);
-        boolean isHttps = matcher.group(2) != null && !matcher.group(2).isEmpty();
-        String destScheme = isHttps ? "https://" : "http://";
+        String destScheme = isHttps() ? "https://" : "http://";
         int destPort = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
         String destPathAndQueryString = req.getUri();
 
@@ -39,7 +48,11 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         return destUri;
     }
 
-    private static HttpRequest createBackendReqFromFrontendReq(URI backendUri, HttpRequest inboundHeader) {
+    private boolean isHttps() {
+        return frontendProtocols.contains(ProtocolDefinerHandler.Protocol.SSL);
+    }
+
+    private HttpRequest createBackendReqFromFrontendReq(URI backendUri, HttpRequest inboundHeader) {
         HttpRequest outboundRequest = new DefaultHttpRequest(inboundHeader.getProtocolVersion(), inboundHeader.getMethod(), backendUri.getRawPath());
         for (Map.Entry<String, String> h: inboundHeader.headers()) {
             outboundRequest.headers().add(h.getKey(), h.getValue());
@@ -58,8 +71,6 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
             final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
             final Channel frontendChannel = ctx.channel();
 
-            final boolean ssl = "https".equals(backendUri.getScheme());
-
             Bootstrap b = new Bootstrap();
             b.group(frontendChannel.eventLoop())
                 .channel(ctx.channel().getClass())
@@ -67,10 +78,13 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
-                        p.addFirst(new ByteLoggingHandler(LogLevel.INFO));
+                        p.addLast(new ByteLoggingHandler(LogLevel.INFO));
 
-                        if (ssl) {
-                            //TODO
+                        if (isHttps()) {
+                            SSLEngine engine = //TODO create real ssl certificate check
+                                    SecureChatSslContextFactory.getClientContext().createSSLEngine();
+                            engine.setUseClientMode(true);
+                            p.addLast("ssl", new SslHandler(engine));
                         }
 
                         p.addLast("encode", new HttpRequestEncoder());

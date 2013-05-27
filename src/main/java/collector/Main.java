@@ -24,25 +24,7 @@ public class Main {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        ChannelPipeline p = ch.pipeline();
-                        p.addFirst(new ByteLoggingHandler(LogLevel.INFO));
-                        // Uncomment the following line if you want HTTPS
-                        //SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-                        //engine.setUseClientMode(false);
-                        //p.addLast("ssl", new SslHandler(engine));
-                        p.addLast("decode", new HttpRequestDecoder());
-                        p.addLast("encode", new HttpResponseEncoder());
-                        //p.addLast("decode", new HttpResponseDecoder());
-                        // Uncomment the following line if you don't want to handle HttpChunks.
-                        //p.addLast("aggregator", new HttpObjectAggregator(1048576));
-                        // Remove the following line if you don't want automatic content compression.
-                        //p.addLast("deflater", new HttpContentCompressor());
-                        p.addLast("handler", new HttpFrontendHandler());
-                    }
-                });
+                .childHandler(new ProtocolDefinerHandler());
 
             Channel ch = b.bind(SERVER_PORT).sync().channel();
             ch.closeFuture().sync();
