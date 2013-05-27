@@ -67,6 +67,7 @@ public class Main {
         private ChannelFuture backendFuture;
 
         private static URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
+            //TODO add bucket to pattern (optional)
             Pattern pattern = Pattern.compile("(.*)\\.local(-secure)?"); //TODO use server port for both http and https and learn if destination is secure from that
             Matcher matcher = pattern.matcher(getHost(req));
             matcher.find();
@@ -86,6 +87,7 @@ public class Main {
             for (Map.Entry<String, String> h: inboundHeader.headers()) {
                 outboundRequest.headers().add(h.getKey(), h.getValue());
             }
+            //TODO cookies
             outboundRequest.headers().set(HOST, backendUri.getHost());
             return outboundRequest;
         }
@@ -132,6 +134,7 @@ public class Main {
                     send100Continue(ctx);
                 }
 
+                //TODO keepAlive
             }
 
             if (msg instanceof HttpContent) {

@@ -1,0 +1,1 @@
+python dnsproxy.py -s `dig | grep -oEi "\d+\.\d+\.\d+\.\d+" | head -n 1`
