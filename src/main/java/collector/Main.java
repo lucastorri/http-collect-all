@@ -24,7 +24,13 @@ public class Main {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new ProtocolDefinerHandler());
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        ChannelPipeline p = ch.pipeline();
+                        p.addLast(new ProtocolDefinerHandler());
+                    }
+                });
 
             Channel ch = b.bind(SERVER_PORT).sync().channel();
             ch.closeFuture().sync();
