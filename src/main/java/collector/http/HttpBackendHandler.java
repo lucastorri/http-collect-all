@@ -24,8 +24,8 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
 
     @Override
     public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-        frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
         ctx.flush().addListener(ChannelFutureListener.CLOSE);
+        frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
     }
 
     @Override

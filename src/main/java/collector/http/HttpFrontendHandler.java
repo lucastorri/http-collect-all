@@ -1,6 +1,7 @@
 package collector.http;
 
 import collector.ProtocolDefinerHandler;
+import collector.log.MongoDBLoggingHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -28,9 +29,11 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     private ChannelFuture backendFuture;
     private List<ProtocolDefinerHandler.Protocol> frontendProtocols;
+    private String requestId;
 
-    public HttpFrontendHandler(List<ProtocolDefinerHandler.Protocol> frontendProtocols) {
+    public HttpFrontendHandler(List<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId) {
         this.frontendProtocols = frontendProtocols;
+        this.requestId = requestId;
     }
 
     private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
@@ -77,20 +80,19 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        ChannelPipeline p = ch.pipeline();
-                        p.addLast(new ByteLoggingHandler(LogLevel.INFO));
-
-                        if (isHttps()) {
-                            SSLEngine engine = //TODO create real ssl certificate check
-                                    SecureChatSslContextFactory.getClientContext().createSSLEngine();
-                            engine.setUseClientMode(true);
-                            p.addLast("ssl", new SslHandler(engine));
-                        }
-
-                        p.addLast("encode", new HttpRequestEncoder());
-                        p.addLast("decode", new HttpResponseDecoder());
-                        p.addLast("inflater", new HttpContentDecompressor());
-                        p.addLast("handler", new HttpBackendHandler(frontendChannel));
+                    ChannelPipeline p = ch.pipeline();
+                    if (isHttps()) {
+                        SSLEngine engine = //TODO create real ssl certificate check
+                                SecureChatSslContextFactory.getClientContext().createSSLEngine();
+                        engine.setUseClientMode(true);
+                        p.addLast("ssl", new SslHandler(engine));
+                    }
+                    p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.BACKEND, requestId));
+                    p.addLast(new ByteLoggingHandler(LogLevel.INFO));
+                    p.addLast("encode", new HttpRequestEncoder());
+                    p.addLast("decode", new HttpResponseDecoder());
+                    p.addLast("inflater", new HttpContentDecompressor());
+                    p.addLast("handler", new HttpBackendHandler(frontendChannel));
                     }
                 });
             backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());

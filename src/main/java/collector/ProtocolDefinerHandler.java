@@ -1,6 +1,7 @@
 package collector;
 
 import collector.http.HttpFrontendHandler;
+import collector.log.MongoDBLoggingHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundByteHandlerAdapter;
@@ -108,12 +109,15 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
     }
 
     private void switchToHttp(ChannelHandlerContext ctx) {
+        String requestId = Long.toString(System.nanoTime());
+
         ChannelPipeline p = ctx.pipeline();
+        p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId));
         p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
-        p.addLast("handler", new HttpFrontendHandler(protocols));
+        p.addLast("handler", new HttpFrontendHandler(protocols, requestId));
         p.remove(this);
     }
 
