@@ -9,100 +9,146 @@ mongoose.connect('mongodb://127.0.0.1/requests');
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 
+var ttt = 0;
+
 db.once('open', function callback () {
 
+  //TODO get only closed
   var reqSchema = mongoose.Schema({
-      request: String,
-      layer: String,
-      direction: String,
-      index: Number,
-      timestamp: Number,
-      content: String
+    request: String,
+    layer: String,
+    direction: String,
+    index: Number,
+    timestamp: Number,
+    content: String
   }, { collection : 'chunks' });
   var Req = mongoose.model('Req', reqSchema);
 
+  var metadataSchema = mongoose.Schema({
+    request: String,
+    port: Number,
+    ssl: Boolean,
+    gzip: Boolean
+  }, { collection: 'metadata' });
+  var Metadata = mongoose.model('Metadata', metadataSchema);
+
+  var groupName = "test";
+  var har = baseHar(groupName);
 
   Req.find(function (err, reqs) {
     if (err) { /* TODO handle err */ }
     var byRequest = groupBy('request', reqs);
 
-    {
-      var firstReq = byRequest[Object.keys(byRequest)[0]];
+    var ids = Object.keys(byRequest);
+    ids.forEach(function(id) {
+      var allChunks = byRequest[id];
+    
+      Metadata.findOne({ request: id }, function(err, metadata) {
+        if (err) { /* TODO handle err */ }
 
-      var byLayer = groupBy('layer', firstReq);
-      var frontend = byLayer['FRONTEND'];
-      var backend = byLayer['BACKEND'];
+        console.log(metadata);
 
-      var frontendByDirection = groupBy('direction', frontend);
-      var backendByDirection = groupBy('direction', backend);
+        var byLayer = groupBy('layer', allChunks);
+        var frontend = byLayer['FRONTEND'];
+        var backend = byLayer['BACKEND'];
 
-      var frontendInbound = frontendByDirection['INBOUND'];
-      var frontendOutbound = frontendByDirection['OUTBOUND'];
-      var backendInbound = backendByDirection['INBOUND'];
-      var backendOutbound = backendByDirection['OUTBOUND'];
+        var frontendByDirection = groupBy('direction', frontend);
+        var backendByDirection = groupBy('direction', backend);
 
-      var req = parse(backendOutbound, parser.request);
-      var res = parse(backendInbound, parser.response);
-      console.log(req);
-      console.log(res);
+        var frontendInbound = sortBy('index', frontendByDirection['INBOUND']);
+        var frontendOutbound = sortBy('index', frontendByDirection['OUTBOUND']);
+        var backendInbound = sortBy('index', backendByDirection['INBOUND']);
+        var backendOutbound = sortBy('index', backendByDirection['OUTBOUND']);
 
-      var entry = {
-        pageref: "page_0",
-        startedDateTime: "2009-04-16T12:07:23.596Z",
-        time: 50,
-        request: {
-          method: "GET",
-          url: "http://www.example.com/path/?param=value",
-          httpVersion: "HTTP/1.1",
-          cookies: [],
-          headers: [],
-          queryString: [],
-          postData: {
-            mimeType: 'text/html'
+        var req = parse(backendOutbound, parser.request);
+        var res = parse(backendInbound, parser.response);
+
+        if (!har.log.pages[0].startedDateTime) {
+          har.log.pages[0].startedDateTime = new Date(frontendInbound[0].timestamp).toJSON();
+        }
+
+        var time = frontendOutbound[frontendOutbound.length - 1].timestamp - frontendInbound[0].timestamp;
+
+        var url = (metadata.ssl ? 'https' : 'http') + '://' + req.headers['host'] + ':' + metadata.port + req.path;
+
+        var entry = {
+          pageref: groupName,
+          startedDateTime: new Date(frontendInbound[0].timestamp).toJSON(),
+          time: time,
+          request: {
+            method: req.method,
+            url: url,
+            httpVersion: req.version,
+            cookies: req.cookies,
+            headers: req.headers,
+            queryString: [],
+            //postData: {
+            //  mimeType: req.headers['content-type']
+            //},
+            headersSize: 0,
+            bodySize: req.content.length,
+            comment: ""
           },
-          headersSize: 150,
-          bodySize: 0,
-          comment: ""
-        },
-        response: {
-          status: 200,
-          statusText: "OK",
-          httpVersion: "HTTP/1.1",
-          cookies: [],
-          headers: [],
-          content: {
-            size: 0,
-            mimeType: 'text/html'
+          response: {
+            status: res.statusCode,
+            statusText: res.statusMessage,
+            httpVersion: res.version,
+            cookies: res.cookies,
+            headers: res.headers,
+            content: {
+              size: res.content.length,
+              mimeType: res.headers['content-type']
+            },
+            redirectURL: "",
+            headersSize: 0,
+            bodySize: res.content.length,
+            comment: ""
           },
-          redirectURL: "",
-          headersSize: 160,
-          bodySize: 850,
+          cache: {
+          },
+          timings: {
+            blocked: 0,
+            dns: -1,
+            connect: 0,
+            send: time / 2,
+            wait: 0,
+            receive: time / 2,
+            ssl: (metadata.ssl) ? 0 : -1,
+            comment: ""
+          },
+          serverIPAddress: "10.0.0.1",
+          connection: id,
           comment: ""
-        },
-        cache: {
-        },
-        timings: {
-          blocked: 0,
-          dns: -1,
-          connect: 15,
-          send: 20,
-          wait: 38,
-          receive: 12,
-          ssl: -1,
-          comment: ""
-        },
-        serverIPAddress: "10.0.0.1",
-        connection: "52492",
-        comment: ""
-      }
-    }
+        }
+      
+        
+        har.log.entries.push(entry);
+        if (har.log.entries.length == ids.length) {
+          log(har);  
+        }
 
-    var har = baseHar();
-    har.log.entries.push(entry);
-    //log(har);
+      });
+    });
   });  
-
 });
+
+function sortBy(key, array) {
+  if (!array || array.length == 0) return array;
+  var type = typeof array[0][key];
+  if (type === 'number') {
+    return array.sort(function(a, b) {
+      return a - b;
+    });
+  } else if (type === 'string') {
+    return array.sort(function(a,b) {
+      return a.localeCompare(b);
+    });
+  }
+  return array.sort(function(a, b) {
+    if (a == b) return 0;
+    return (a > b) ? 1 : -1;
+  });
+}
 
 function groupBy(key, array) {
   var grouped = {};
@@ -116,7 +162,7 @@ function groupBy(key, array) {
   return grouped;
 }
 
-function baseHar() {
+function baseHar(id) {
   return {
     log: {
       version : "1.2",
@@ -132,12 +178,12 @@ function baseHar() {
       },
       pages: [
         {
-          startedDateTime: "2009-04-16T12:07:25.123+01:00",
-          id: "bucket_XYZ",
-          title: "Bucket XYZ",
+          startedDateTime: undefined,
+          id: id,
+          title: "http-collector bucket #n",
           pageTimings: {
-            onContentLoad: 1720,
-            onLoad: 2500,
+            onContentLoad: 0,
+            onLoad: 0,
             comment: ""
           },
           comment: ""

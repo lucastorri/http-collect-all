@@ -42,12 +42,15 @@ var messages = (function() {
   };
   request[states.newLine].action = function() {};
   request[states.header].action = function(header, req) {
-    var m = header.asciiSlice().match(/([^:]+):\s*(.*)[\n\r]+/);
+    if (!req.cookies) req.cookies = [];
     if (!req.headers) req.headers = [];
-    req.headers.push({
-      name: m[1].toLowerCase(),
-      value: m[2]
-    });
+    var h = parseHeader(header);
+    if (h.name == 'cookie' || h.name == 'set-cookie') {
+      req.cookies.push(h.value); //TODO transform to a cookie object
+    } else {
+      req.headers[h.name] = h.value;
+    }
+    req.headers.push(h);
   };
   request[states.body].action = function(content, req) {
     req.content = content;
@@ -63,6 +66,14 @@ var messages = (function() {
   response[states.newLine].action = function() {};
   response[states.header].action = request[states.header].action;
   response[states.body].action = request[states.body].action;
+
+  function parseHeader(header) {
+    var m = header.asciiSlice().match(/([^:]+):\s*(.*)[\n\r]+/);
+    return {
+      name: m[1].toLowerCase(),
+      value: m[2]
+    };
+  }
 
   return {
     request: request,

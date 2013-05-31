@@ -1,5 +1,6 @@
 package collector.log;
 
+import collector.ProtocolDefinerHandler;
 import com.allanbank.mongodb.*;
 import com.allanbank.mongodb.bson.builder.BuilderFactory;
 import com.allanbank.mongodb.bson.builder.DocumentBuilder;
@@ -7,15 +8,19 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.util.CharsetUtil;
 
+import java.util.List;
+
 public class MongoDBLoggingHandler extends ChannelDuplexHandler implements ChannelInboundByteHandler, ChannelOutboundByteHandler {
 
     private static final MongoCollection chunks;
     private static final MongoCollection closed;
+    private static final MongoCollection metadata;
 
     private final Layer layer;
     private final String requestId;
     private int inboundCount;
     private int outboundCount;
+
 
     static {
         MongoClientConfiguration config = new MongoClientConfiguration();
@@ -24,6 +29,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         MongoDatabase database = mongoClient.getDatabase("requests");
         chunks = database.getCollection("chunks");
         closed = database.getCollection("closed");
+        metadata = database.getCollection("metadata");
     }
 
     public MongoDBLoggingHandler(Layer layer, String requestId) {
@@ -31,6 +37,16 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         this.requestId = requestId;
         this.inboundCount = 0;
         this.outboundCount = 0;
+    }
+
+    public MongoDBLoggingHandler logMetadata(List<ProtocolDefinerHandler.Protocol> protocols, int port) {
+        DocumentBuilder document = BuilderFactory.start()
+            .add("request", requestId)
+            .add("port", port)
+            .add("ssl", protocols.contains(ProtocolDefinerHandler.Protocol.SSL))
+            .add("gzip", protocols.contains(ProtocolDefinerHandler.Protocol.GZIP));
+        metadata.insertAsync(document);
+        return this;
     }
 
     @Override
@@ -83,10 +99,10 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (future.isDone()) {
-                    DocumentBuilder document = BuilderFactory.start();
-                    document.add("timestamp", System.currentTimeMillis());
-                    document.add("request", requestId);
-                    document.add("layer", layer.name());
+                    DocumentBuilder document = BuilderFactory.start()
+                        .add("timestamp", System.currentTimeMillis())
+                        .add("request", requestId)
+                        .add("layer", layer.name());
                     closed.insertAsync(document);
                 }
             }
@@ -95,15 +111,13 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
     }
 
     private void store(Direction direction, int index, ByteBuf buf) {
-        DocumentBuilder document = BuilderFactory.start();
-        document.add("timestamp", System.currentTimeMillis());
-        document.add("request", requestId);
-        document.add("layer", layer.name());
-        document.add("direction", direction.name());
-        document.add("index", index);
-        document.add("content", buf.toString(CharsetUtil.UTF_8)/*toByteArray(buf)*/);
-        //save protocols used (SSL, GZIP)
-        //save port used
+        DocumentBuilder document = BuilderFactory.start()
+            .add("timestamp", System.currentTimeMillis())
+            .add("request", requestId)
+            .add("layer", layer.name())
+            .add("direction", direction.name())
+            .add("index", index)
+            .add("content", buf.toString(CharsetUtil.UTF_8)/*toByteArray(buf)*/);
         chunks.insertAsync(document);
     }
 

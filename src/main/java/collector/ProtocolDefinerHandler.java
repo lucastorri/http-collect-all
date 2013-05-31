@@ -17,6 +17,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.ssl.SslHandler;
 
 import javax.net.ssl.SSLEngine;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -112,7 +113,8 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
         String requestId = Long.toString(System.nanoTime());
 
         ChannelPipeline p = ctx.pipeline();
-        p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId));
+        int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
+        p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId).logMetadata(protocols, port));
         p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
