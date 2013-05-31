@@ -97,7 +97,8 @@ db.once('open', function callback () {
             headers: res.headers,
             content: {
               size: res.content.length,
-              mimeType: res.headers['content-type']
+              mimeType: res.headers['content-type'],
+              text: res.content.utf8Slice()
             },
             redirectURL: "",
             headersSize: 0,
@@ -110,9 +111,9 @@ db.once('open', function callback () {
             blocked: 0,
             dns: -1,
             connect: 0,
-            send: time / 2,
+            send: parseInt(time / 2),
             wait: 0,
-            receive: time / 2,
+            receive: parseInt(time / 2),
             ssl: (metadata.ssl) ? 0 : -1,
             comment: ""
           },
