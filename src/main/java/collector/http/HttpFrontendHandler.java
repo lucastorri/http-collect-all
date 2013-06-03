@@ -95,7 +95,13 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                     p.addLast("handler", new HttpBackendHandler(frontendChannel));
                     }
                 });
-            backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
+            final long timeBeforeConnect = System.currentTimeMillis();
+            backendFuture = b.connect(backendUri.getHost(), backendUri.getPort()).addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    long timeToConnect = System.currentTimeMillis() - timeBeforeConnect;
+                }
+            });
             backendFuture.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
