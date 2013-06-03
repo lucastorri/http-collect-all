@@ -46,14 +46,13 @@ db.once('open', function callback () {
       Metadata.findOne({ request: id }, function(err, metadata) {
         if (err) { /* TODO handle err */ }
 
-        console.log(metadata);
-
         var byLayer = groupBy('layer', allChunks);
         var frontend = byLayer['FRONTEND'];
         var backend = byLayer['BACKEND'];
 
+        console.log(backend)
         var frontendByDirection = groupBy('direction', frontend);
-        var backendByDirection = groupBy('direction', backend);
+        var backendByDirection = groupBy('direction', backend); 
 
         var frontendInbound = sortBy('index', frontendByDirection['INBOUND']);
         var frontendOutbound = sortBy('index', frontendByDirection['OUTBOUND']);
@@ -125,7 +124,10 @@ db.once('open', function callback () {
         
         har.log.entries.push(entry);
         if (har.log.entries.length == ids.length) {
-          log(har);  
+          har.log.entries = har.log.entries.sort(function(a,b) {
+            return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime);
+          });
+          log(har);
         }
 
       });
