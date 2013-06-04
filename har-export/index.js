@@ -121,26 +121,11 @@ db.once('open', function callback () {
           comment: ""
         }
 
-        var chunkedContent = res.content;
-        var content = [];
-        for (var i = 0; i < chunkedContent.length;) {
-          var lengthBytes = [];
-          for (var c; c = chunkedContent[i++], c != 0x0a && c != 0x0d;) {
-            lengthBytes.push(c);
-          }
-          i += 1;
-
-          var lengthString = lengthBytes.map(function(c) { return String.fromCharCode(c); }).join('');
-          var chunkLength = parseInt(lengthString, 16);
-          
-          var limit = i + chunkLength;
-          while (i < limit) {
-            content.push(chunkedContent[i++]);
-          }
-          i += 2;
+        if (res.headers['transfer-encoding'] == 'chunked') {
+          res.content = unchunk(res.content);
         }
 
-        zlib.unzip(new Buffer(content), function(a, buf) {
+        decode(res.content, res.headers['content-encoding'], function(a, buf) {
           entry.response.content.text = buf.utf8Slice();
           har.log.entries.push(entry);
           if (har.log.entries.length == ids.length) {
@@ -227,6 +212,42 @@ function parse(chunks, message) {
     p.parse(new Buffer(chunk.content));
   });
   return p.end();
+}
+
+function unchunk(chunkedContent) {
+  var content = [];
+  for (var i = 0; i < chunkedContent.length;) {
+    var lengthBytes = [];
+    for (var c; c = chunkedContent[i++], c != 0x0a && c != 0x0d;) {
+      lengthBytes.push(c);
+    }
+    i += 1;
+
+    var lengthString = lengthBytes.map(function(c) { return String.fromCharCode(c); }).join('');
+    var chunkLength = parseInt(lengthString, 16);
+    
+    var limit = i + chunkLength;
+    while (i < limit) {
+      content.push(chunkedContent[i++]);
+    }
+    i += 2;
+  }
+  return new Buffer(content);
+}
+
+function decode(content, contentEncoding, callback) {
+  switch (contentEncoding) {
+    // or, just use zlib.createUnzip() to handle both cases
+    case 'gzip':
+      zlib.unzip(content, callback);
+      break;
+    case 'deflate':
+      zlib.inflate(content, callback);
+      break;
+    default:
+      callback(null, content);
+      break;
+  }
 }
 
 function log(o) {
