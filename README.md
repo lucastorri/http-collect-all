@@ -52,6 +52,8 @@ python dnsproxy.py -s `dig | grep -oEi "\d+\.\d+\.\d+\.\d+" | head -n 1`
 
 **[dnsproxy](https://code.google.com/p/marlon-tools/source/browse/tools/dnsproxy/dnsproxy.py)** is a simple DNS proxy server with support for wildcard hosts. The line above will get the current DNS in use by your system and proxy it. For convenience, there is a copy of **dnsproxy** available on the `dns` directory.
 
+Finally, change your network settings to user `127.0.0.1` as your DNS server.
+
 
 ### Firewall rules
 
