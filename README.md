@@ -90,10 +90,7 @@ done
 ## Future plans
 
 * Make a Linux VM with all the firewall settings set, a DNS proxy, and ready to deploy a jar with **http-collector**
-* Append the received parts to a log that can be used later on. Options:
-	* Assuming that a _full request_ is composed by a request and a response of both the frontend and the backend, use MongoDB to store that _full request_. That should be put on a same collection and can be used to store partial HTTP messages (chunks). Each collection is identified by an unique Id that represents that _full request_, while chunks are identified inside the collection by its type (request/response), to what direction (client -> frontend/frontend -> backend), and an ordering number for each chunk (0, 1, …). Each part should be accompanied by a timestamp on when it was received. _Full request_ Ids can, for now, be generated on the **http-collector** itself, being moved on the future to an Id generation app.
-	* Use Apache Kafka to store chunks, also identified like described on the option below. Create a second app that consumes that information and merge it all and then finally stores it.
-
+* Close keep-alive connections
 
 
 ## Usage example
