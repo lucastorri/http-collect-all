@@ -92,7 +92,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                     p.addLast(new ByteLoggingHandler(LogLevel.INFO));
                     p.addLast("encode", new HttpRequestEncoder());
                     p.addLast("decode", new HttpResponseDecoder());
-                    p.addLast("inflater", new HttpContentDecompressor());
+//                    p.addLast("inflater", new HttpContentDecompressor()); //really need to decompress? we don't do any inspection on the content...
                     p.addLast("handler", new HttpBackendHandler(frontendChannel));
                     }
                 });
