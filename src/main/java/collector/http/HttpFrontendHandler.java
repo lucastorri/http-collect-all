@@ -56,7 +56,8 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     }
 
     private HttpRequest createBackendReqFromFrontendReq(URI backendUri, HttpRequest inboundHeader) {
-        HttpRequest outboundRequest = new DefaultHttpRequest(inboundHeader.getProtocolVersion(), inboundHeader.getMethod(), backendUri.getRawPath());
+        String queryString = backendUri.getQuery() == null ? "" : "?" + backendUri.getQuery();
+        HttpRequest outboundRequest = new DefaultHttpRequest(inboundHeader.getProtocolVersion(), inboundHeader.getMethod(), backendUri.getRawPath() + queryString);
         for (Map.Entry<String, String> h: inboundHeader.headers()) {
             outboundRequest.headers().add(h.getKey(), h.getValue());
         }
