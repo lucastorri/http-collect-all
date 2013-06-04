@@ -148,7 +148,7 @@ db.once('open', function callback () {
               return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime);
             });
             log(har);
-            process.kill();
+            process.exit();
           }
 
         });
