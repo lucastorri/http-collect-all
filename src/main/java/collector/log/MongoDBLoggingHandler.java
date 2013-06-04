@@ -117,7 +117,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
             .add("layer", layer.name())
             .add("direction", direction.name())
             .add("index", index)
-            .add("content", buf.toString(CharsetUtil.UTF_8)/*toByteArray(buf)*/);
+            .add("content", toByteArray(buf));
         chunks.insertAsync(document);
     }
 
