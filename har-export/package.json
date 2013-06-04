@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "mongoose": ">= 3.6.11",
-    "prettyjson": ">= 0.8.1"
+    "prettyjson": ">= 0.8.1",
+    "hexy": ">= 0.2.5"
   },
   "repository": "",
   "author": "",

@@ -4,6 +4,7 @@ var mongoose = require('mongoose');
 var prettyjson = require('prettyjson');
 var parser = require('./http-parser');
 var Buffer = require('buffer').Buffer;
+var zlib = require('zlib');
 
 mongoose.connect('mongodb://127.0.0.1/requests');
 var db = mongoose.connection;
@@ -20,7 +21,7 @@ db.once('open', function callback () {
     direction: String,
     index: Number,
     timestamp: Number,
-    content: String
+    content: Buffer
   }, { collection : 'chunks' });
   var Req = mongoose.model('Req', reqSchema);
 
@@ -50,7 +51,6 @@ db.once('open', function callback () {
         var frontend = byLayer['FRONTEND'];
         var backend = byLayer['BACKEND'];
 
-        console.log(backend)
         var frontendByDirection = groupBy('direction', frontend);
         var backendByDirection = groupBy('direction', backend); 
 
@@ -120,15 +120,37 @@ db.once('open', function callback () {
           connection: id,
           comment: ""
         }
-      
-        
-        har.log.entries.push(entry);
-        if (har.log.entries.length == ids.length) {
-          har.log.entries = har.log.entries.sort(function(a,b) {
-            return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime);
-          });
-          log(har);
+
+        var chunkedContent = res.content;
+        var content = [];
+        for (var i = 0; i < chunkedContent.length;) {
+          var lengthBytes = [];
+          for (var c; c = chunkedContent[i++], c != 0x0a && c != 0x0d;) {
+            lengthBytes.push(c);
+          }
+          i += 1;
+
+          var lengthString = lengthBytes.map(function(c) { return String.fromCharCode(c); }).join('');
+          var chunkLength = parseInt(lengthString, 16);
+          
+          var limit = i + chunkLength;
+          while (i < limit) {
+            content.push(chunkedContent[i++]);
+          }
+          i += 2;
         }
+
+        zlib.unzip(new Buffer(content), function(a, buf) {
+          entry.response.content.text = buf.utf8Slice();
+          har.log.entries.push(entry);
+          if (har.log.entries.length == ids.length) {
+            har.log.entries = har.log.entries.sort(function(a,b) {
+              return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime);
+            });
+            log(har);
+          }
+
+        });
 
       });
     });
@@ -207,7 +229,7 @@ function parse(chunks, message) {
 }
 
 function log(o) {
-  console.log(prettyjson.render(o));
+  //console.log(prettyjson.render(o));
   console.log(JSON.stringify(o));
 }
 
