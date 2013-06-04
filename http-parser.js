@@ -89,7 +89,7 @@ function Parser(message) {
   var parsed = {};
 
   function parse(buffer) {
-    for (var c, i = 0; c = buffer[i++], c;) {
+    for (var c, i = 0; c = buffer[i++], c != undefined;) {
       line.push(c);
 
       if (state === states.body || c === 0x0d) continue;
