@@ -98,13 +98,13 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         future.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
-                if (future.isDone()) {
-                    DocumentBuilder document = BuilderFactory.start()
-                        .add("timestamp", System.currentTimeMillis())
-                        .add("request", requestId)
-                        .add("layer", layer.name());
-                    closed.insertAsync(document);
-                }
+            if (future.isDone()) {
+                DocumentBuilder document = BuilderFactory.start()
+                    .add("timestamp", System.currentTimeMillis())
+                    .add("request", requestId)
+                    .add("layer", layer.name());
+                closed.insertAsync(document);
+            }
             }
         });
         super.close(ctx, future);
