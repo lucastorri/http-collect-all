@@ -29,11 +29,13 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     private ChannelFuture backendFuture;
     private Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
-    private String requestId;
+    private MongoDBLoggingHandler frontendLogger;
+    private MongoDBLoggingHandler backendLogger;
 
-    public HttpFrontendHandler(Set<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId) {
+    public HttpFrontendHandler(Set<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId, MongoDBLoggingHandler logger) {
         this.frontendProtocols = frontendProtocols;
-        this.requestId = requestId;
+        this.frontendLogger = logger;
+        this.backendLogger = new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.BACKEND, requestId);
     }
 
     private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
@@ -43,12 +45,16 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         matcher.find();
         String destHost = matcher.group(1);
         String destScheme = isHttps() ? "https://" : "http://";
-        int destPort = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
+        int destPort = port(ctx);
         String destPathAndQueryString = req.getUri();
 
         URI destUri = new URI(destScheme + destHost + ":" + destPort + destPathAndQueryString);
 
         return destUri;
+    }
+
+    private int port(ChannelHandlerContext ctx) {
+        return ((InetSocketAddress) ctx.channel().localAddress()).getPort();
     }
 
     private boolean isHttps() {
@@ -61,7 +67,6 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         for (Map.Entry<String, String> h: inboundHeader.headers()) {
             outboundRequest.headers().add(h.getKey(), h.getValue());
         }
-        //TODO cookies
         outboundRequest.headers().set(HOST, backendUri.getHost());
         return outboundRequest;
     }
@@ -69,6 +74,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     @Override
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
+            frontendLogger.logMetadata(frontendProtocols, port(ctx));
             HttpRequest req = (HttpRequest) msg;
 
             URI backendUri = createBackendUriFromFrontendReq(req, ctx);
@@ -84,28 +90,24 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                     ChannelPipeline p = ch.pipeline();
                     if (isHttps()) {
                         SSLEngine engine = //TODO create real ssl certificate check
-                                SecureChatSslContextFactory.getClientContext().createSSLEngine();
+                            SecureChatSslContextFactory.getClientContext().createSSLEngine();
                         engine.setUseClientMode(true);
                         p.addLast("ssl", new SslHandler(engine));
                     }
-                    p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.BACKEND, requestId));
+                    p.addLast("store", backendLogger);
                     p.addLast(new ByteLoggingHandler(LogLevel.INFO));
                     p.addLast("encode", new HttpRequestEncoder());
                     p.addLast("decode", new HttpResponseDecoder());
-//                    p.addLast("inflater", new HttpContentDecompressor()); //really need to decompress? we don't do any inspection on the content...
-                    p.addLast("handler", new HttpBackendHandler(frontendChannel));
+                    //p.addLast("inflater", new HttpContentDecompressor()); //not needed now, as we don't inspect the message content
+                    p.addLast("handler", new HttpBackendHandler(frontendChannel, frontendLogger, backendLogger));
                     }
                 });
             final long timeBeforeConnect = System.currentTimeMillis();
-            backendFuture = b.connect(backendUri.getHost(), backendUri.getPort()).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    long timeToConnect = System.currentTimeMillis() - timeBeforeConnect;
-                }
-            });
+            backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
             backendFuture.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
+                    long timeToConnect = System.currentTimeMillis() - timeBeforeConnect;
                     future.channel().outboundMessageBuffer().add(backendReq);
                 }
             });
@@ -114,11 +116,15 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                 send100Continue(ctx);
             }
 
-            //TODO keepAlive
         }
 
         if (msg instanceof HttpContent) {
             final HttpContent httpContent = (HttpContent) msg;
+
+            if (msg instanceof LastHttpContent) {
+                LastHttpContent trailer = (LastHttpContent) msg;
+                //TODO  trailer.trailingHeaders();
+            }
 
             backendFuture.addListener(new ChannelFutureListener() {
                 @Override
@@ -126,11 +132,6 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                     future.channel().outboundMessageBuffer().add(httpContent.content());
                 }
             });
-
-            if (msg instanceof LastHttpContent) {
-                LastHttpContent trailer = (LastHttpContent) msg;
-                //TODO  trailer.trailingHeaders();
-            }
         }
     }
 

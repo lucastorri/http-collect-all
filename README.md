@@ -90,7 +90,6 @@ done
 ## Future plans
 
 * Make a Linux VM with all the firewall settings set, a DNS proxy, and ready to deploy a jar with **http-collector**
-* Close keep-alive connections
 
 
 ## Usage example

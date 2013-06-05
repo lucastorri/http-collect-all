@@ -7,9 +7,9 @@ import com.allanbank.mongodb.bson.builder.DocumentBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 
-import java.util.List;
 import java.util.Set;
 
+@ChannelHandler.Sharable
 public class MongoDBLoggingHandler extends ChannelDuplexHandler implements ChannelInboundByteHandler, ChannelOutboundByteHandler {
 
     private static final MongoCollection chunks;
@@ -18,6 +18,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
 
     private final Layer layer;
     private final String requestId;
+    private int requestNumber;
     private int inboundCount;
     private int outboundCount;
 
@@ -35,13 +36,14 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
     public MongoDBLoggingHandler(Layer layer, String requestId) {
         this.layer = layer;
         this.requestId = requestId;
+        this.requestNumber = 0;
         this.inboundCount = 0;
         this.outboundCount = 0;
     }
 
     public MongoDBLoggingHandler logMetadata(Set<ProtocolDefinerHandler.Protocol> protocols, int port) {
         DocumentBuilder document = BuilderFactory.start()
-            .add("request", requestId)
+            .add("request", id())
             .add("port", port)
             .add("ssl", protocols.contains(ProtocolDefinerHandler.Protocol.SSL))
             .add("gzip", protocols.contains(ProtocolDefinerHandler.Protocol.GZIP));
@@ -93,27 +95,10 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         store(Direction.OUTBOUND, outboundCount++, buf);
     }
 
-    @Override
-    public void close(ChannelHandlerContext ctx, ChannelPromise future) throws Exception {
-        future.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-            if (future.isDone()) {
-                DocumentBuilder document = BuilderFactory.start()
-                    .add("timestamp", System.currentTimeMillis())
-                    .add("request", requestId)
-                    .add("layer", layer.name());
-                closed.insertAsync(document);
-            }
-            }
-        });
-        super.close(ctx, future);
-    }
-
     private void store(Direction direction, int index, ByteBuf buf) {
         DocumentBuilder document = BuilderFactory.start()
             .add("timestamp", System.currentTimeMillis())
-            .add("request", requestId)
+            .add("request", id())
             .add("layer", layer.name())
             .add("direction", direction.name())
             .add("index", index)
@@ -125,6 +110,22 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         byte[] b = new byte[buf.readableBytes()];
         buf.getBytes(0, b);
         return b;
+    }
+
+    private String id() {
+        return requestId + "-" + requestNumber;
+    }
+
+    public void nextRequest() {
+        requestNumber++;
+    }
+
+    public void saveClosed() {
+        DocumentBuilder document = BuilderFactory.start()
+            .add("timestamp", System.currentTimeMillis())
+            .add("request", id())
+            .add("layer", layer.name());
+        closed.insertAsync(document);
     }
 
     public static enum Layer { FRONTEND, BACKEND }

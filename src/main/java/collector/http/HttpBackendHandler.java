@@ -1,22 +1,27 @@
 package collector.http;
 
+import collector.log.MongoDBLoggingHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.codec.http.HttpContent;
-import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
-
 import io.netty.handler.codec.http.HttpMessage;
-import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.LastHttpContent;
+
+import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
 
 public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
     private final Channel frontendChannel;
+    private MongoDBLoggingHandler frontendLogger;
+    private MongoDBLoggingHandler backendLogger;
     private boolean keepAlive;
 
-    public HttpBackendHandler(Channel frontendChannel) {
+    public HttpBackendHandler(Channel frontendChannel, MongoDBLoggingHandler frontendLogger, MongoDBLoggingHandler backendLogger) {
         this.frontendChannel = frontendChannel;
+        this.frontendLogger = frontendLogger;
+        this.backendLogger = backendLogger;
     }
 
     @Override
@@ -29,6 +34,13 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
             msg = ((HttpContent) msg).copy();
         }
         frontendChannel.write(msg);
+        frontendChannel.flush();
+
+        if (msg instanceof LastHttpContent) {
+            backendLogger.saveClosed();
+            backendLogger.nextRequest();
+            frontendLogger.nextRequest();
+        }
     }
 
     @Override

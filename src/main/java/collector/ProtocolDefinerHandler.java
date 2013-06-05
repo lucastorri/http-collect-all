@@ -114,12 +114,13 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
 
         ChannelPipeline p = ctx.pipeline();
         int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
-        p.addLast("store", new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId).logMetadata(protocols, port));
+        MongoDBLoggingHandler logger = new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId);
+        p.addLast("store", logger);
         p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
-        p.addLast("handler", new HttpFrontendHandler(protocols, requestId));
+        p.addLast("handler", new HttpFrontendHandler(protocols, requestId, logger));
         p.remove(this);
     }
 

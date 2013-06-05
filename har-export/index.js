@@ -2,19 +2,22 @@
 
 var mongoose = require('mongoose');
 var prettyjson = require('prettyjson');
-var parser = require('./http-parser');
 var Buffer = require('buffer').Buffer;
 var zlib = require('zlib');
+
+var parser = require('./http-parser');
+
 
 mongoose.connect('mongodb://127.0.0.1/requests');
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 
-var ttt = 0;
+var groupName = "test";
+var har = baseHar(groupName);
 
-db.once('open', function callback () {
 
-  //TODO get only closed
+db.once('open', function callback() {
+
   var reqSchema = mongoose.Schema({
     request: String,
     layer: String,
@@ -33,115 +36,156 @@ db.once('open', function callback () {
   }, { collection: 'metadata' });
   var Metadata = mongoose.model('Metadata', metadataSchema);
 
-  var groupName = "test";
-  var har = baseHar(groupName);
+  var closedSchema = mongoose.Schema({
+    layer: String,
+    request: String,
+    timestamp: Number
+  }, { collection: 'closed' });
+  var Closed = mongoose.model('Closed', closedSchema);
 
-  Req.find(function (err, reqs) {
-    if (err) { /* TODO handle err */ }
-    var byRequest = groupBy('request', reqs);
-
+  Closed.find(function(err, closed) {
+    checkError(err);
+    var byRequest = groupBy('request', closed);
     var ids = Object.keys(byRequest);
+
     ids.forEach(function(id) {
-      var allChunks = byRequest[id];
-    
-      Metadata.findOne({ request: id }, function(err, metadata) {
-        if (err) { /* TODO handle err */ }
 
-        var byLayer = groupBy('layer', allChunks);
-        var frontend = byLayer['FRONTEND'];
-        var backend = byLayer['BACKEND'];
+      var metadata;
+      var reqs;
 
-        var frontendByDirection = groupBy('direction', frontend);
-        var backendByDirection = groupBy('direction', backend); 
-
-        var frontendInbound = sortBy('index', frontendByDirection['INBOUND']);
-        var frontendOutbound = sortBy('index', frontendByDirection['OUTBOUND']);
-        var backendInbound = sortBy('index', backendByDirection['INBOUND']);
-        var backendOutbound = sortBy('index', backendByDirection['OUTBOUND']);
-
-        var req = parse(backendOutbound, parser.request);
-        var res = parse(backendInbound, parser.response);
-
-        if (!har.log.pages[0].startedDateTime) {
-          har.log.pages[0].startedDateTime = new Date(frontendInbound[0].timestamp).toJSON();
-        }
-
-        var time = frontendOutbound[frontendOutbound.length - 1].timestamp - frontendInbound[0].timestamp;
-
-        var url = (metadata.ssl ? 'https' : 'http') + '://' + req.headers['host'] + ':' + metadata.port + req.path;
-
-        var entry = {
-          pageref: groupName,
-          startedDateTime: new Date(frontendInbound[0].timestamp).toJSON(),
-          time: time,
-          request: {
-            method: req.method,
-            url: url,
-            httpVersion: req.version,
-            cookies: req.cookies,
-            headers: req.headers,
-            queryString: [],
-            //postData: {
-            //  mimeType: req.headers['content-type']
-            //},
-            headersSize: 0,
-            bodySize: req.content.length,
-            comment: ""
-          },
-          response: {
-            status: res.statusCode,
-            statusText: res.statusMessage,
-            httpVersion: res.version,
-            cookies: res.cookies,
-            headers: res.headers,
-            content: {
-              size: res.content.length,
-              mimeType: res.headers['content-type'],
-              text: res.content.utf8Slice()
-            },
-            redirectURL: "",
-            headersSize: 0,
-            bodySize: res.content.length,
-            comment: ""
-          },
-          cache: {
-          },
-          timings: {
-            blocked: 0,
-            dns: -1,
-            connect: 0,
-            send: parseInt(time / 2),
-            wait: 0,
-            receive: parseInt(time / 2),
-            ssl: (metadata.ssl) ? 0 : -1,
-            comment: ""
-          },
-          serverIPAddress: "10.0.0.1",
-          connection: id,
-          comment: ""
-        }
-
-        if (res.headers['transfer-encoding'] == 'chunked') {
-          res.content = unchunk(res.content);
-        }
-
-        decode(res.content, res.headers['content-encoding'], function(a, buf) {
-          entry.response.content.text = buf.utf8Slice();
-          har.log.entries.push(entry);
-          if (har.log.entries.length == ids.length) {
-            har.log.entries = har.log.entries.sort(function(a,b) {
-              return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime);
-            });
-            log(har);
-            process.exit();
-          }
-
-        });
-
+      Metadata.findOne({ request: id }, function(err, m) {
+        checkError(err);
+        metadata = m;
+        go();
       });
+
+      Req.find({ request: id }, function(err, r) {
+        checkError(err);
+        reqs = r;
+        go();
+      });
+
+      function go() {
+        if (metadata && reqs) {
+          createEntry(metadata, reqs, function() {
+            if (har.log.entries.length == ids.length) {
+              har.log.entries = har.log.entries.sort(function(a,b) { return Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime); });
+              log(har);
+              process.exit();
+            }  
+          });
+        }
+      }
+
     });
-  });  
+
+    function checkError(err) {
+      if (err) {
+        console.log(err);
+        process.exit(1);
+      }
+    }
+
+  });
+
 });
+
+function createEntry(metadata, allChunks, done) {
+
+  var id = metadata.request;
+
+  var byLayer = groupBy('layer', allChunks);
+  var frontend = byLayer['FRONTEND'];
+  var backend = byLayer['BACKEND'];
+
+  var frontendByDirection = groupBy('direction', frontend);
+  var backendByDirection = groupBy('direction', backend); 
+
+  var frontendInbound = sortBy('index', frontendByDirection['INBOUND']);
+  var frontendOutbound = sortBy('index', frontendByDirection['OUTBOUND']);
+  var backendInbound = sortBy('index', backendByDirection['INBOUND']);
+  var backendOutbound = sortBy('index', backendByDirection['OUTBOUND']);
+
+  // console.log(allChunks);
+  // console.log('frontendInbound: ' + frontendInbound.length);
+  // console.log('frontendOutbound: ' + frontendOutbound.length);
+  // console.log('backendInbound: ' + backendInbound.length);
+  // console.log('backendOutbound: ' + backendOutbound.length);
+  // console.log();
+
+  var req = parse(backendOutbound, parser.request);
+  var res = parse(backendInbound, parser.response);
+
+  if (!har.log.pages[0].startedDateTime) {
+    har.log.pages[0].startedDateTime = new Date(frontendInbound[0].timestamp).toJSON();
+  }
+
+  var time = frontendOutbound[frontendOutbound.length - 1].timestamp - frontendInbound[0].timestamp;
+
+  var url = (metadata.ssl ? 'https' : 'http') + '://' + req.headers['host'] + ':' + metadata.port + req.path;
+
+  var entry = {
+    pageref: groupName,
+    startedDateTime: new Date(frontendInbound[0].timestamp).toJSON(),
+    time: time,
+    request: {
+      method: req.method,
+      url: url,
+      httpVersion: req.version,
+      cookies: req.cookies,
+      headers: req.headers,
+      queryString: [],
+      //postData: {
+      //  mimeType: req.headers['content-type']
+      //},
+      headersSize: 0,
+      bodySize: req.content.length,
+      comment: ""
+    },
+    response: {
+      status: res.statusCode,
+      statusText: res.statusMessage,
+      httpVersion: res.version,
+      cookies: res.cookies,
+      headers: res.headers,
+      content: {
+        size: res.content.length,
+        mimeType: res.headers['content-type'],
+        text: res.content.utf8Slice()
+      },
+      redirectURL: "",
+      headersSize: 0,
+      bodySize: res.content.length,
+      comment: ""
+    },
+    cache: {
+    },
+    timings: {
+      blocked: 0,
+      dns: -1,
+      connect: 0,
+      send: parseInt(time / 2),
+      wait: 0,
+      receive: parseInt(time / 2),
+      ssl: (metadata.ssl) ? 0 : -1,
+      comment: ""
+    },
+    serverIPAddress: "10.0.0.1",
+    connection: id,
+    comment: ""
+  }
+
+  if (res.headers['transfer-encoding'] == 'chunked') {
+    res.content = unchunk(res.content);
+  }
+
+  decode(res.content, res.headers['content-encoding'], function(a, buf) {
+    entry.response.content.text = buf.utf8Slice();
+    har.log.entries.push(entry);
+    done();
+  });
+}
+
 
 function sortBy(key, array) {
   if (!array || array.length == 0) return array;
@@ -237,7 +281,6 @@ function unchunk(chunkedContent) {
 
 function decode(content, contentEncoding, callback) {
   switch (contentEncoding) {
-    // or, just use zlib.createUnzip() to handle both cases
     case 'gzip':
       zlib.unzip(content, callback);
       break;
@@ -254,5 +297,3 @@ function log(o) {
   //console.log(prettyjson.render(o));
   console.log(JSON.stringify(o));
 }
-
-var Buffer = require('buffer').Buffer;
