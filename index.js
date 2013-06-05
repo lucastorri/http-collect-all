@@ -121,6 +121,7 @@ function createEntry(metadata, allChunks, done) {
   }
 
   var time = frontendOutbound[frontendOutbound.length - 1].timestamp - frontendInbound[0].timestamp;
+  time = (time % 2 == 0) ? time : time - 1;
 
   var url = (metadata.ssl ? 'https' : 'http') + '://' + req.headers['host'] + ':' + metadata.port + req.path;
 
