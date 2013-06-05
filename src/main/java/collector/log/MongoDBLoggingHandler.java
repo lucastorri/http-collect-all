@@ -122,9 +122,8 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
     }
 
     private byte[] toByteArray(ByteBuf buf) {
-        ByteBuf copy = buf.copy();
-        byte[] b = new byte[copy.readableBytes()];
-        copy.getBytes(0, b);
+        byte[] b = new byte[buf.readableBytes()];
+        buf.getBytes(0, b);
         return b;
     }
 
