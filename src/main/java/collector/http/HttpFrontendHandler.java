@@ -14,8 +14,8 @@ import io.netty.handler.ssl.SslHandler;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,10 +28,10 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
     private ChannelFuture backendFuture;
-    private List<ProtocolDefinerHandler.Protocol> frontendProtocols;
+    private Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
     private String requestId;
 
-    public HttpFrontendHandler(List<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId) {
+    public HttpFrontendHandler(Set<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId) {
         this.frontendProtocols = frontendProtocols;
         this.requestId = requestId;
     }

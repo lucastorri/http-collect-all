@@ -18,21 +18,21 @@ import io.netty.handler.ssl.SslHandler;
 
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
 
     private final boolean detectGzip;
     private final boolean detectSsl;
-    private final List<Protocol> protocols;
+    private final Set<Protocol> protocols;
 
     public ProtocolDefinerHandler() {
-        this(true, true, Collections.<Protocol>emptyList());
+        this(true, true, Collections.<Protocol>emptySet());
     }
 
-    private ProtocolDefinerHandler(boolean detectSsl, boolean detectGzip, List<Protocol> protocols) {
+    private ProtocolDefinerHandler(boolean detectSsl, boolean detectGzip, Set<Protocol> protocols) {
         this.detectSsl = detectSsl;
         this.detectGzip = detectGzip;
         this.protocols = protocols;
@@ -123,8 +123,8 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
         p.remove(this);
     }
 
-    private List<Protocol> protocolsWith(Protocol p) {
-        List<Protocol> newProtocols = new ArrayList<>(protocols.size() + 1);
+    private Set<Protocol> protocolsWith(Protocol p) {
+        Set<Protocol> newProtocols = new HashSet<>(protocols.size() + 1);
         newProtocols.add(p);
         return newProtocols;
     }

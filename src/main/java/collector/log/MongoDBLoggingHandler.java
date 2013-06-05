@@ -6,9 +6,9 @@ import com.allanbank.mongodb.bson.builder.BuilderFactory;
 import com.allanbank.mongodb.bson.builder.DocumentBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.util.CharsetUtil;
 
 import java.util.List;
+import java.util.Set;
 
 public class MongoDBLoggingHandler extends ChannelDuplexHandler implements ChannelInboundByteHandler, ChannelOutboundByteHandler {
 
@@ -39,7 +39,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         this.outboundCount = 0;
     }
 
-    public MongoDBLoggingHandler logMetadata(List<ProtocolDefinerHandler.Protocol> protocols, int port) {
+    public MongoDBLoggingHandler logMetadata(Set<ProtocolDefinerHandler.Protocol> protocols, int port) {
         DocumentBuilder document = BuilderFactory.start()
             .add("request", requestId)
             .add("port", port)
