@@ -253,7 +253,12 @@ function baseHar(id) {
 function parse(chunks, message) {
   var p = parser.Parser(message);
   chunks.forEach(function(chunk) {
-    p.parse(new Buffer(chunk.content));
+    try {
+      p.parse(new Buffer(chunk.content));
+    } catch(err) {
+      console.log(chunk);
+      throw err;
+    }
   });
   return p.end();
 }

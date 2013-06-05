@@ -117,6 +117,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
     }
 
     public void nextRequest() {
+        inboundCount = outboundCount = 0;
         requestNumber++;
     }
 
