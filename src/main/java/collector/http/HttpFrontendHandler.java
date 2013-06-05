@@ -152,6 +152,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        frontendLogger.logError(cause);
         cause.printStackTrace();
         ctx.close();
     }

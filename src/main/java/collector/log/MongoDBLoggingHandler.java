@@ -7,6 +7,10 @@ import com.allanbank.mongodb.bson.builder.DocumentBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Set;
 
 @ChannelHandler.Sharable
@@ -15,6 +19,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
     private static final MongoCollection chunks;
     private static final MongoCollection closed;
     private static final MongoCollection metadata;
+    private static final MongoCollection error;
 
     private final Layer layer;
     private final String requestId;
@@ -31,6 +36,7 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         chunks = database.getCollection("chunks");
         closed = database.getCollection("closed");
         metadata = database.getCollection("metadata");
+        error = database.getCollection("error");
     }
 
     public MongoDBLoggingHandler(Layer layer, String requestId) {
@@ -127,6 +133,18 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
             .add("request", id())
             .add("layer", layer.name());
         closed.insertAsync(document);
+    }
+
+    public void logError(Throwable cause) {
+        ByteArrayOutputStream causeString = new ByteArrayOutputStream();
+        cause.printStackTrace(new PrintStream(causeString));
+        DocumentBuilder document = BuilderFactory.start()
+            .add("timestamp", System.currentTimeMillis())
+            .add("request", id())
+            .add("layer", layer.name())
+            .add("message", cause.getMessage())
+            .add("trace", causeString.toString());
+        error.insertAsync(document);
     }
 
     public static enum Layer { FRONTEND, BACKEND }
