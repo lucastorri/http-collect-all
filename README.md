@@ -25,6 +25,22 @@ _B_ is identified by its hostname _b.system.com_ and _A_ is configured to access
 
 **http-collector** does not change anything on the request other than the host (_b.system.com.local_ to _b.system.com_) before forwarding the request. It runs on port `8080` and is able to receive both `http` and `https` traffic through the same port.
 
+## URL Format
+
+```
+www.google.com.lucastorri-1234.local
+\____________/ \________/ \__/ \___/
+      |            |       |     |
+      |            |       |     +-> http-collector hostname
+      |            |       |
+      |            |       +-> bucket (optional)
+      |            |
+      |            +-> user
+      |
+      +-> destination
+
+```
+
 
 ## Implementation
 
@@ -34,6 +50,21 @@ _B_ is identified by its hostname _b.system.com_ and _A_ is configured to access
 
 
 ## Setup guidelines for Mac OS
+
+
+### MongoDB
+
+Used for store data about the requests made (metadata, partial, etc). Just start a localhost server using the default port.
+
+
+### Redis
+
+Used for validating users. Run a localhost instance, also on the default port, and create a user in the command line like:
+
+```
+telnet localhost 6379
+set lucastorri true
+```
 
 
 ### DNS proxy
@@ -98,7 +129,7 @@ Once everything has been set up:
 
 
 ```
-curl -v http://127.0.0.1:80 -H "Host: www.google.com.local"
+curl -v http://127.0.0.1:80 -H "Host: www.google.com.lucastorri-1234.local"
 | * About to connect() to 127.0.0.1 port 80 (#0)
 | *   Trying 127.0.0.1...
 | * connected
@@ -132,7 +163,7 @@ curl -v http://127.0.0.1:80 -H "Host: www.google.com.local"
 ```
 
 ```
-curl -kv https://127.0.0.1:443 -H "Host: www.google.com.local"
+curl -kv https://127.0.0.1:443 -H "Host: www.google.com.lucastorri-1234.local"
 | * About to connect() to 127.0.0.1 port 443 (#0)
 | *   Trying 127.0.0.1...
 | * connected

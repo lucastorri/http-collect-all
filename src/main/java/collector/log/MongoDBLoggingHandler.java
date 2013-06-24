@@ -47,9 +47,11 @@ public class MongoDBLoggingHandler extends ChannelDuplexHandler implements Chann
         this.outboundCount = 0;
     }
 
-    public MongoDBLoggingHandler logMetadata(Set<ProtocolDefinerHandler.Protocol> protocols, int port) {
+    public MongoDBLoggingHandler logMetadata(Set<ProtocolDefinerHandler.Protocol> protocols, int port, String user, String bucket) {
         DocumentBuilder document = BuilderFactory.start()
             .add("request", id())
+            .add("user", user)
+            .add("bucket", bucket)
             .add("port", port)
             .add("ssl", protocols.contains(ProtocolDefinerHandler.Protocol.SSL))
             .add("gzip", protocols.contains(ProtocolDefinerHandler.Protocol.GZIP));

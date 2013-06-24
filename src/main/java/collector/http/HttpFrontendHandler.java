@@ -2,6 +2,8 @@ package collector.http;
 
 import collector.ProtocolDefinerHandler;
 import collector.log.MongoDBLoggingHandler;
+import com.lambdaworks.redis.RedisAsyncConnection;
+import com.lambdaworks.redis.RedisClient;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -16,6 +18,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,14 +26,24 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static io.netty.handler.codec.http.HttpHeaders.getHost;
 import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
+import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
+
+    private static final String HOSTNAME = "local";
+    private static final RedisClient redis;
+
+    static {
+        redis = new RedisClient("localhost");
+    }
 
     private ChannelFuture backendFuture;
     private Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
     private MongoDBLoggingHandler frontendLogger;
     private MongoDBLoggingHandler backendLogger;
+    private String user;
+    private String bucket;
 
     public HttpFrontendHandler(Set<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId, MongoDBLoggingHandler logger) {
         this.frontendProtocols = frontendProtocols;
@@ -40,10 +53,12 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
         //TODO add bucket to pattern (optional)
-        Pattern pattern = Pattern.compile("(.*)\\.local"); //TODO use server port for both http and https and learn if destination is secure from that
+        Pattern pattern = Pattern.compile("(.+)\\.(\\w[\\w\\d]*)-?([\\d\\w-]+)?\\." + HOSTNAME); //TODO use server port for both http and https and learn if destination is secure from that
         Matcher matcher = pattern.matcher(getHost(req));
         matcher.find();
         String destHost = matcher.group(1);
+        user = matcher.group(2);
+        bucket = matcher.group(3);
         String destScheme = isHttps() ? "https://" : "http://";
         int destPort = port(ctx);
         String destPathAndQueryString = req.getUri();
@@ -51,6 +66,16 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         URI destUri = new URI(destScheme + destHost + ":" + destPort + destPathAndQueryString);
 
         return destUri;
+    }
+
+    private String userData(String user) {
+        RedisAsyncConnection<String, String> async = redis.connectAsync();
+        Future<String> ud = async.get(user);
+        try {
+            return ud.get();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private int port(ChannelHandlerContext ctx) {
@@ -74,46 +99,53 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     @Override
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
-            frontendLogger.logMetadata(frontendProtocols, port(ctx));
             HttpRequest req = (HttpRequest) msg;
-
             URI backendUri = createBackendUriFromFrontendReq(req, ctx);
             final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
             final Channel frontendChannel = ctx.channel();
+            frontendLogger.logMetadata(frontendProtocols, port(ctx), user, bucket);
 
-            Bootstrap b = new Bootstrap();
-            b.group(frontendChannel.eventLoop())
-                .channel(ctx.channel().getClass())
-                .handler(new ChannelInitializer<SocketChannel>() {
+            if (userData(user) != null) {
+
+                Bootstrap b = new Bootstrap();
+                b.group(frontendChannel.eventLoop())
+                    .channel(ctx.channel().getClass())
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        public void initChannel(SocketChannel ch) throws Exception {
+                        ChannelPipeline p = ch.pipeline();
+                        if (isHttps()) {
+                            SSLEngine engine = //TODO create real ssl certificate check
+                                SecureChatSslContextFactory.getClientContext().createSSLEngine();
+                            engine.setUseClientMode(true);
+                            p.addLast("ssl", new SslHandler(engine));
+                        }
+                        p.addLast("store", backendLogger);
+                        p.addLast(new ByteLoggingHandler(LogLevel.INFO));
+                        p.addLast("encode", new HttpRequestEncoder());
+                        p.addLast("decode", new HttpResponseDecoder());
+                        //p.addLast("inflater", new HttpContentDecompressor()); //not needed now, as we don't inspect the message content
+                        p.addLast("handler", new HttpBackendHandler(frontendChannel, frontendLogger, backendLogger));
+                        }
+                    });
+                final long timeBeforeConnect = System.currentTimeMillis();
+                backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
+                backendFuture.addListener(new ChannelFutureListener() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                    ChannelPipeline p = ch.pipeline();
-                    if (isHttps()) {
-                        SSLEngine engine = //TODO create real ssl certificate check
-                            SecureChatSslContextFactory.getClientContext().createSSLEngine();
-                        engine.setUseClientMode(true);
-                        p.addLast("ssl", new SslHandler(engine));
-                    }
-                    p.addLast("store", backendLogger);
-                    p.addLast(new ByteLoggingHandler(LogLevel.INFO));
-                    p.addLast("encode", new HttpRequestEncoder());
-                    p.addLast("decode", new HttpResponseDecoder());
-                    //p.addLast("inflater", new HttpContentDecompressor()); //not needed now, as we don't inspect the message content
-                    p.addLast("handler", new HttpBackendHandler(frontendChannel, frontendLogger, backendLogger));
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        long timeToConnect = System.currentTimeMillis() - timeBeforeConnect;
+                        future.channel().outboundMessageBuffer().add(backendReq);
                     }
                 });
-            final long timeBeforeConnect = System.currentTimeMillis();
-            backendFuture = b.connect(backendUri.getHost(), backendUri.getPort());
-            backendFuture.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    long timeToConnect = System.currentTimeMillis() - timeBeforeConnect;
-                    future.channel().outboundMessageBuffer().add(backendReq);
-                }
-            });
 
-            if (is100ContinueExpected(req)) {
-                send100Continue(ctx);
+                if (is100ContinueExpected(req)) {
+                    send100Continue(ctx);
+                }
+
+            } else {
+                DefaultHttpResponse forbidden = new DefaultHttpResponse(HTTP_1_1, FORBIDDEN);
+                ctx.write(forbidden);
+                ctx.close();
             }
 
         }
