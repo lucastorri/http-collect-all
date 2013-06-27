@@ -1,0 +1,22 @@
+set daemon 120
+set logfile /var/log/monit.log
+set idfile /var/lib/monit/id
+set statefile /var/lib/monit/state
+set eventqueue basedir /var/lib/monit/events slots 100
+set httpd port 2812 and use address localhost
+allow localhost
+
+include /etc/monit/conf.d/*
+
+
+check file monitrc with path /etc/monit/monitrc
+  if changed timestamp
+    then exec "/usr/sbin/service monit reload"
+
+check process redis-server with pidfile /var/run/redis/redis-server.pid
+  start program = "/usr/sbin/service redis-server start"
+  stop program = "/usr/sbin/service redis-server stop"
+
+check process mongod with pidfile /var/lib/mongodb/mongod.lock
+  start program = "/usr/sbin/service mongodb start"
+  stop program = "/usr/sbin/service mongodb stop"
