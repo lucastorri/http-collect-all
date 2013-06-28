@@ -12,6 +12,20 @@ var groups = {
   'FRONTEND_OUTBOUND': parser.response
 };
 
+var exit = {
+  withSuccess: function() {
+    process.exit(0);
+  },
+  withError: function(err) {
+    err && console.error(err.stack);
+    process.exit(1);
+  },
+  withNoEntryLeft: function() {
+    process.exit(2);
+  }
+};
+
+//TODO to enable the script for parallel use: http://docs.mongodb.org/manual/tutorial/isolate-sequence-of-operations/
 var req = models.Closed.findOneQ({})
 .then(function(closed) {
   if (!closed) exit.withNoEntryLeft();
@@ -57,19 +71,6 @@ q.all(id, files).then(function(id, files) {
 .all()
 .then(exit.withSuccess)
 .fail(exit.withError);
-
-var exit = {
-  withSuccess: function() {
-    process.exit(0);
-  },
-  withError: function(err) {
-    err && console.error(err.stack);
-    process.exit(1);
-  },
-  withNoEntryLeft: function() {
-    process.exit(2);
-  }
-};
 
 function chunksGroupedByLayerAndDirection(request) {
   return {
