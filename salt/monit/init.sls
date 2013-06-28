@@ -19,3 +19,9 @@ monit-reload:
     - name: /usr/sbin/service monit reload
     - require:
       - file: /etc/monit/monitrc
+
+monit-validate:
+  cmd.run:
+    - name: /usr/bin/monit validate
+    - require:
+      - cmd: monit-reload
