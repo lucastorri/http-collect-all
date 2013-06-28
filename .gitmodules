@@ -1,0 +1,3 @@
+[submodule "http-collector"]
+	path = http-collector
+	url = https://lucastorri@bitbucket.org/lucastorri/http-collector.git

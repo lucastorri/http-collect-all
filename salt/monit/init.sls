@@ -14,14 +14,8 @@ monit-service:
     - require:
       - pkg: monit
 
-monit-reload:
+monit-restart-all:
   cmd.run:
-    - name: /usr/sbin/service monit reload
+    - name: /usr/bin/monit restart all
     - require:
       - file: /etc/monit/monitrc
-
-monit-validate:
-  cmd.run:
-    - name: /usr/bin/monit validate
-    - require:
-      - cmd: monit-reload
