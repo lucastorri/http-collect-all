@@ -20,12 +20,12 @@ def copy_base_files():
 
 def copy_all_files():
   copy_base_files()
-  copy_http_collector()
+  copy_hc_files()
 
 def make_http_collector():
   local('mvn -f http-collector/pom.xml package')
 
-def copy_http_collector():
+def copy_hc_files():
   make_http_collector()
   put('http-collector/target/http-collector', '/usr/local/bin/', mirror_local_mode=True)
 
