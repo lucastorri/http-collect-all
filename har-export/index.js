@@ -1,49 +1,20 @@
 #!/usr/bin/env node
 
-var mongoose = require('mongoose');
 var prettyjson = require('prettyjson');
 var Buffer = require('buffer').Buffer;
 var zlib = require('zlib');
 
 var parser = require('./http-parser');
+var models = require('./models');
 
-
-mongoose.connect('mongodb://127.0.0.1/requests');
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
 
 var groupName = "test";
 var har = baseHar(groupName);
 
 
-db.once('open', function callback() {
+models.db.once('open', function callback() {
 
-  var reqSchema = mongoose.Schema({
-    request: String,
-    layer: String,
-    direction: String,
-    index: Number,
-    timestamp: Number,
-    content: Buffer
-  }, { collection : 'chunks' });
-  var Req = mongoose.model('Req', reqSchema);
-
-  var metadataSchema = mongoose.Schema({
-    request: String,
-    port: Number,
-    ssl: Boolean,
-    gzip: Boolean
-  }, { collection: 'metadata' });
-  var Metadata = mongoose.model('Metadata', metadataSchema);
-
-  var closedSchema = mongoose.Schema({
-    layer: String,
-    request: String,
-    timestamp: Number
-  }, { collection: 'closed' });
-  var Closed = mongoose.model('Closed', closedSchema);
-
-  Closed.find(function(err, closed) {
+  models.Closed.find(function(err, closed) {
     checkError(err);
     var byRequest = groupBy('request', closed);
     var ids = Object.keys(byRequest);
@@ -53,13 +24,13 @@ db.once('open', function callback() {
       var metadata;
       var reqs;
 
-      Metadata.findOne({ request: id }, function(err, m) {
+      models.Metadata.findOne({ request: id }, function(err, m) {
         checkError(err);
         metadata = m;
         go();
       });
 
-      Req.find({ request: id }, function(err, r) {
+      models.Req.find({ request: id }, function(err, r) {
         checkError(err);
         reqs = r;
         go();
