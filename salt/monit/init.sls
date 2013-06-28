@@ -13,3 +13,9 @@ monit-service:
     - mode: 600
     - require:
       - pkg: monit
+
+monit-reload:
+  cmd.run:
+    - name: /usr/sbin/service monit reload
+    - require:
+      - file: /etc/monit/monitrc

@@ -1,3 +1,12 @@
+http-collector:
+  group:
+    - present
+  user.present:
+    - gid_from_name: true
+    - createhome: false
+    - require:
+      - group: http-collector
+
 /etc/firewall_rules.sh:
   file.managed:
     - source: salt://users/firewall_rules.sh

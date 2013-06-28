@@ -20,3 +20,7 @@ check process redis-server with pidfile /var/run/redis/redis-server.pid
 check process mongod with pidfile /var/lib/mongodb/mongod.lock
   start program = "/usr/sbin/service mongodb start"
   stop program = "/usr/sbin/service mongodb stop"
+
+check process http-collector with pidfile /var/run/http-collector/http-collector.pid
+  start program = "/usr/sbin/service http-collector start"
+  stop program = "/usr/sbin/service http-collector stop"
