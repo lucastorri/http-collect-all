@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var mongoose = require('mongoose');
+var mongoose = require('mongoose-q')(require('mongoose'));
 
 mongoose.connect('mongodb://127.0.0.1/requests');
 var db = mongoose.connection;
@@ -21,7 +21,9 @@ var metadataSchema = mongoose.Schema({
   request: String,
   port: Number,
   ssl: Boolean,
-  gzip: Boolean
+  gzip: Boolean,
+  user: String,
+  bucket: String
 }, { collection: 'metadata' });
 exports.Metadata = mongoose.model('Metadata', metadataSchema);
 
