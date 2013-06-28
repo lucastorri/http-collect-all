@@ -1,0 +1,20 @@
+#!/bin/bash
+
+while true
+do
+  result=`node export-entry.js`
+
+  case "$?" in
+  0)
+    echo Finished
+    ;;
+  1)
+    echo result
+    sleep 120
+    ;;
+  2)
+    echo None left
+    sleep 10
+    ;;
+  esac
+done
