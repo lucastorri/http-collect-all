@@ -1,9 +1,9 @@
 package collector.http;
 
 import collector.ProtocolDefinerHandler;
-import collector.log.MongoDBLoggingHandler;
-import com.lambdaworks.redis.RedisAsyncConnection;
-import com.lambdaworks.redis.RedisClient;
+import collector.ProtocolDefinerHandler.Protocol;
+import collector.data.UserRegistry;
+import collector.log.LoggingHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -18,7 +18,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,50 +31,40 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
     private static final String HOSTNAME = "local";
-    private static final RedisClient redis;
+    public static final String HOST_PATTERN = "(.+)\\.(\\w[\\w\\d]*)-?([\\d\\w-]+)?\\." + HOSTNAME;
 
-    static {
-        redis = new RedisClient("localhost");
-    }
+    private final UserRegistry users;
+    private final LoggingHandler frontendLogger;
+    private final LoggingHandler backendLogger;
+    private final Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
 
     private ChannelFuture backendFuture;
-    private Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
-    private MongoDBLoggingHandler frontendLogger;
-    private MongoDBLoggingHandler backendLogger;
     private String user;
     private String bucket;
 
-    public HttpFrontendHandler(Set<ProtocolDefinerHandler.Protocol> frontendProtocols, String requestId, MongoDBLoggingHandler logger) {
+    public HttpFrontendHandler(UserRegistry users, Set<Protocol> frontendProtocols, LoggingHandler logger) {
+        this.users = users;
         this.frontendProtocols = frontendProtocols;
         this.frontendLogger = logger;
-        this.backendLogger = new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.BACKEND, requestId);
+        this.backendLogger = frontendLogger.backend();
     }
 
     private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
-        //TODO add bucket to pattern (optional)
-        Pattern pattern = Pattern.compile("(.+)\\.(\\w[\\w\\d]*)-?([\\d\\w-]+)?\\." + HOSTNAME); //TODO use server port for both http and https and learn if destination is secure from that
+        return new URI(scheme() + host(req) + ":" + port(ctx) + req.getUri());
+    }
+
+    private String scheme() {
+        return isHttps() ? "https://" : "http://";
+    }
+
+    private String host(HttpRequest req) {
+        Pattern pattern = Pattern.compile(HOST_PATTERN);
         Matcher matcher = pattern.matcher(getHost(req));
         matcher.find();
         String destHost = matcher.group(1);
         user = matcher.group(2);
         bucket = matcher.group(3);
-        String destScheme = isHttps() ? "https://" : "http://";
-        int destPort = port(ctx);
-        String destPathAndQueryString = req.getUri();
-
-        URI destUri = new URI(destScheme + destHost + ":" + destPort + destPathAndQueryString);
-
-        return destUri;
-    }
-
-    private String userData(String user) {
-        RedisAsyncConnection<String, String> async = redis.connectAsync();
-        Future<String> ud = async.get(user);
-        try {
-            return ud.get();
-        } catch (Exception e) {
-            return null;
-        }
+        return destHost;
     }
 
     private int port(ChannelHandlerContext ctx) {
@@ -86,7 +75,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         return frontendProtocols.contains(ProtocolDefinerHandler.Protocol.SSL);
     }
 
-    private HttpRequest createBackendReqFromFrontendReq(URI backendUri, HttpRequest inboundHeader) {
+    private HttpRequest frontendRequestToBackendRequest(URI backendUri, HttpRequest inboundHeader) {
         String queryString = backendUri.getQuery() == null ? "" : "?" + backendUri.getQuery();
         HttpRequest outboundRequest = new DefaultHttpRequest(inboundHeader.getProtocolVersion(), inboundHeader.getMethod(), backendUri.getRawPath() + queryString);
         for (Map.Entry<String, String> h: inboundHeader.headers()) {
@@ -101,11 +90,11 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
             URI backendUri = createBackendUriFromFrontendReq(req, ctx);
-            final HttpRequest backendReq = createBackendReqFromFrontendReq(backendUri, req);
+            final HttpRequest backendReq = frontendRequestToBackendRequest(backendUri, req);
             final Channel frontendChannel = ctx.channel();
-            frontendLogger.logMetadata(frontendProtocols, port(ctx), user, bucket);
+            frontendLogger.metadata(frontendProtocols, port(ctx), user, bucket);
 
-            if (userData(user) != null) {
+            if (users.isRegistered(user)) {
 
                 Bootstrap b = new Bootstrap();
                 b.group(frontendChannel.eventLoop())
@@ -184,7 +173,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        frontendLogger.logError(cause);
+        frontendLogger.error(cause);
         cause.printStackTrace();
         ctx.close();
     }

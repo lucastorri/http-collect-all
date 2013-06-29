@@ -1,6 +1,6 @@
 package collector.http;
 
-import collector.log.MongoDBLoggingHandler;
+import collector.log.LoggingHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -14,11 +14,11 @@ import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
 public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
     private final Channel frontendChannel;
-    private MongoDBLoggingHandler frontendLogger;
-    private MongoDBLoggingHandler backendLogger;
+    private LoggingHandler frontendLogger;
+    private LoggingHandler backendLogger;
     private boolean keepAlive;
 
-    public HttpBackendHandler(Channel frontendChannel, MongoDBLoggingHandler frontendLogger, MongoDBLoggingHandler backendLogger) {
+    public HttpBackendHandler(Channel frontendChannel, LoggingHandler frontendLogger, LoggingHandler backendLogger) {
         this.frontendChannel = frontendChannel;
         this.frontendLogger = frontendLogger;
         this.backendLogger = backendLogger;
@@ -37,9 +37,9 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
         frontendChannel.flush();
 
         if (msg instanceof LastHttpContent) {
-            backendLogger.saveClosed();
-            backendLogger.nextRequest();
-            frontendLogger.nextRequest();
+            backendLogger.closed();
+            backendLogger.next();
+            frontendLogger.next();
         }
     }
 
@@ -53,7 +53,7 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        backendLogger.logError(cause);
+        backendLogger.error(cause);
         cause.printStackTrace();
         ctx.close();
         frontendChannel.close();

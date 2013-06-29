@@ -1,7 +1,9 @@
 package collector;
 
+import collector.data.RequestData;
+import collector.data.UserRegistry;
 import collector.http.HttpFrontendHandler;
-import collector.log.MongoDBLoggingHandler;
+import collector.log.LoggingHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundByteHandlerAdapter;
@@ -23,6 +25,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
+
+    private static final RequestData requests = RequestData.connect("localhost", 27017);
+    private static final UserRegistry users = UserRegistry.connect("localhost", 6379);
 
     private final boolean detectGzip;
     private final boolean detectSsl;
@@ -114,13 +119,13 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
 
         ChannelPipeline p = ctx.pipeline();
         int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
-        MongoDBLoggingHandler logger = new MongoDBLoggingHandler(MongoDBLoggingHandler.Layer.FRONTEND, requestId);
+        LoggingHandler logger = new LoggingHandler(requests, LoggingHandler.Layer.FRONTEND, requestId);
         p.addLast("store", logger);
         p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
-        p.addLast("handler", new HttpFrontendHandler(protocols, requestId, logger));
+        p.addLast("handler", new HttpFrontendHandler(users, protocols, logger));
         p.remove(this);
     }
 
