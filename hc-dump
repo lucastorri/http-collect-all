@@ -8,22 +8,20 @@ done
 
 SCRIPT_DIR=`dirname "$SCRIPT"`
 OUT_DIR=${1:-.}
+WAIT_INTERVAL=10
 
 while true
 do
-  output=`node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"`
-
+  node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"
   code="$?"
+
   case "$code" in
   0)
-    echo Finished
     ;;
   20)
-    echo None left
-    sleep 10
+    sleep "$WAIT_INTERVAL"
     ;;
   *)
-    echo $output
     exit "$code"
     ;;
   esac

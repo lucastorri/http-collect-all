@@ -4,7 +4,10 @@ var mongoose = require('mongoose-q')(require('mongoose'));
 
 mongoose.connect('mongodb://127.0.0.1/requests');
 var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
+db.on('error', function(err) {
+  console.error('connection error:', err)
+  process.exit(1);
+});
 exports.db = db;
 
 var reqSchema = mongoose.Schema({

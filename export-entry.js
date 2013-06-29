@@ -16,7 +16,8 @@ var groups = {
 };
 
 var exit = {
-  withSuccess: function() {
+  withSuccess: function(id) {
+    console.log('Success ' + id)
     process.exit(0);
   },
   withError: function(err) {
@@ -24,6 +25,7 @@ var exit = {
     process.exit(1);
   },
   withNoEntryLeft: function() {
+    console.error('None Left');
     process.exit(20);
   }
 };
@@ -72,6 +74,9 @@ q.all(id, files).then(function(id, files) {
   ];
 })
 .all()
+.then(function() {
+  return id;
+})
 .then(exit.withSuccess)
 .fail(exit.withError);
 
