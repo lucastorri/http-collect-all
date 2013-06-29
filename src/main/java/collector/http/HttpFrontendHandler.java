@@ -1,7 +1,7 @@
 package collector.http;
 
-import collector.ProtocolDefinerHandler;
-import collector.ProtocolDefinerHandler.Protocol;
+import collector.server.ProtocolHandler;
+import collector.server.ProtocolHandler.Protocol;
 import collector.data.UserRegistry;
 import collector.log.LoggingHandler;
 import io.netty.bootstrap.Bootstrap;
@@ -36,7 +36,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     private final UserRegistry users;
     private final LoggingHandler frontendLogger;
     private final LoggingHandler backendLogger;
-    private final Set<ProtocolDefinerHandler.Protocol> frontendProtocols;
+    private final Set<ProtocolHandler.Protocol> frontendProtocols;
 
     private ChannelFuture backendFuture;
     private String user;
@@ -72,7 +72,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     }
 
     private boolean isHttps() {
-        return frontendProtocols.contains(ProtocolDefinerHandler.Protocol.SSL);
+        return frontendProtocols.contains(ProtocolHandler.Protocol.SSL);
     }
 
     private HttpRequest frontendRequestToBackendRequest(URI backendUri, HttpRequest inboundHeader) {

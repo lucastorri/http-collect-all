@@ -1,6 +1,6 @@
 package collector.log;
 
-import collector.ProtocolDefinerHandler;
+import collector.server.ProtocolHandler;
 import collector.data.RequestData;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -77,7 +77,7 @@ public class LoggingHandler extends ChannelDuplexHandler implements ChannelInbou
         return requestId + "-" + requestNumber;
     }
 
-    public LoggingHandler metadata(Set<ProtocolDefinerHandler.Protocol> protocols, int port, String user, String bucket) {
+    public LoggingHandler metadata(Set<ProtocolHandler.Protocol> protocols, int port, String user, String bucket) {
         requests.metadata(id(), user, bucket, port, protocols);
         return this;
     }

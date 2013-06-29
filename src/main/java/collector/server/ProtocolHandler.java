@@ -25,8 +25,8 @@ import java.util.Set;
 
 public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
 
+    private final DataStores data;
     private final boolean detectGzip;
-    private DataStores data;
     private final boolean detectSsl;
     private final Set<Protocol> protocols;
 

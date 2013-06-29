@@ -3,15 +3,15 @@ package collector.data;
 import com.lambdaworks.redis.RedisAsyncConnection;
 import com.lambdaworks.redis.RedisClient;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.concurrent.Future;
 
-public class UserRegistry {
+public class UserRegistry implements Closeable {
 
-    private final RedisClient redis;
     private final RedisAsyncConnection<String, String> connection;
 
     private UserRegistry(RedisClient redis) {
-        this.redis = redis;
         this.connection = redis.connectAsync();
     }
 
@@ -29,4 +29,8 @@ public class UserRegistry {
         return new UserRegistry(redis);
     }
 
+    @Override
+    public void close() throws IOException {
+        connection.close();
+    }
 }

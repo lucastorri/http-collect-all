@@ -1,6 +1,5 @@
 package collector.server;
 
-import collector.server.ProtocolDefinerHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -14,9 +13,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 public class Server {
 
     private final int port;
+    private ServerHandlerFactory handler;
 
-    public Server(int port) {
+    public Server(int port, ServerHandlerFactory handler) {
         this.port = port;
+        this.handler = handler;
     }
 
     public void run() throws Exception {
@@ -30,7 +31,7 @@ public class Server {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
-                        p.addLast(new ProtocolDefinerHandler());
+                        p.addLast(handler.newInstance());
                     }
                 });
 

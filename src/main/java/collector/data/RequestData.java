@@ -1,6 +1,6 @@
 package collector.data;
 
-import collector.ProtocolDefinerHandler;
+import collector.server.ProtocolHandler;
 import collector.log.LoggingHandler.Direction;
 import collector.log.LoggingHandler.Layer;
 import com.allanbank.mongodb.*;
@@ -9,11 +9,13 @@ import com.allanbank.mongodb.bson.builder.DocumentBuilder;
 import io.netty.buffer.ByteBuf;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-public class RequestData {
+public class RequestData implements Closeable {
 
     private final MongoDatabase database;
     private final MongoClient client;
@@ -65,14 +67,14 @@ public class RequestData {
         return error.insertAsync(document);
     }
 
-    public Future<Integer> metadata(String request, String user, String bucket, int port, Set<ProtocolDefinerHandler.Protocol> protocols) {
+    public Future<Integer> metadata(String request, String user, String bucket, int port, Set<ProtocolHandler.Protocol> protocols) {
         DocumentBuilder document = BuilderFactory.start()
             .add("request", request)
             .add("user", user)
             .add("bucket", bucket)
             .add("port", port)
-            .add("ssl", protocols.contains(ProtocolDefinerHandler.Protocol.SSL))
-            .add("gzip", protocols.contains(ProtocolDefinerHandler.Protocol.GZIP));
+            .add("ssl", protocols.contains(ProtocolHandler.Protocol.SSL))
+            .add("gzip", protocols.contains(ProtocolHandler.Protocol.GZIP));
         return metadata.insertAsync(document);
     }
 
@@ -86,5 +88,10 @@ public class RequestData {
         MongoClientConfiguration conf = new MongoClientConfiguration();
         conf.addServer(host + ":" + port);
         return new RequestData(MongoFactory.createClient(conf));
+    }
+
+    @Override
+    public void close() throws IOException {
+        client.close();
     }
 }
