@@ -5,7 +5,7 @@ var q = require('q');
 
 var models = require('./models');
 var parser = require('./http-parser');
-var output = process.argv[0];
+var output = process.argv[2];
 
 
 var groups = {
