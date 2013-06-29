@@ -1,7 +1,16 @@
 #!/bin/bash
 
-SCRIPT_DIR=`dirname "$0"`
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]
+do
+  SCRIPT=`readlink "$0"`
+done
+
+SCRIPT_DIR=`dirname "$SCRIPT"`
 OUT_DIR=${1:-.}
+
+echo $SCRIPT_DIR
+exit 0
 
 while true
 do
