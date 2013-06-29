@@ -1,7 +1,6 @@
-package collector;
+package collector.server;
 
-import collector.data.RequestData;
-import collector.data.UserRegistry;
+import collector.data.DataStores;
 import collector.http.HttpFrontendHandler;
 import collector.log.LoggingHandler;
 import io.netty.buffer.ByteBuf;
@@ -24,20 +23,19 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
-
-    private static final RequestData requests = RequestData.connect("localhost", 27017);
-    private static final UserRegistry users = UserRegistry.connect("localhost", 6379);
+public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
 
     private final boolean detectGzip;
+    private DataStores data;
     private final boolean detectSsl;
     private final Set<Protocol> protocols;
 
-    public ProtocolDefinerHandler() {
-        this(true, true, Collections.<Protocol>emptySet());
+    public ProtocolHandler(DataStores data) {
+        this(data, true, true, Collections.<Protocol>emptySet());
     }
 
-    private ProtocolDefinerHandler(boolean detectSsl, boolean detectGzip, Set<Protocol> protocols) {
+    private ProtocolHandler(DataStores data, boolean detectSsl, boolean detectGzip, Set<Protocol> protocols) {
+        this.data = data;
         this.detectSsl = detectSsl;
         this.detectGzip = detectGzip;
         this.protocols = protocols;
@@ -102,7 +100,7 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
         engine.setUseClientMode(false);
 
         p.addLast("ssl", new SslHandler(engine));
-        p.addLast("unificationA", new ProtocolDefinerHandler(false, detectGzip, protocolsWith(Protocol.SSL)));
+        p.addLast("unificationA", new ProtocolHandler(data, false, detectGzip, protocolsWith(Protocol.SSL)));
         p.remove(this);
     }
 
@@ -110,7 +108,7 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
         ChannelPipeline p = ctx.pipeline();
         p.addLast("gzipdeflater", ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP));
         p.addLast("gzipinflater", ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
-        p.addLast("unificationB", new ProtocolDefinerHandler(detectSsl, false, protocolsWith(Protocol.GZIP)));
+        p.addLast("unificationB", new ProtocolHandler(data, detectSsl, false, protocolsWith(Protocol.GZIP)));
         p.remove(this);
     }
 
@@ -119,13 +117,13 @@ public class ProtocolDefinerHandler extends ChannelInboundByteHandlerAdapter {
 
         ChannelPipeline p = ctx.pipeline();
         int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
-        LoggingHandler logger = new LoggingHandler(requests, LoggingHandler.Layer.FRONTEND, requestId);
+        LoggingHandler logger = new LoggingHandler(data.requests(), LoggingHandler.Layer.FRONTEND, requestId);
         p.addLast("store", logger);
         p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
-        p.addLast("handler", new HttpFrontendHandler(users, protocols, logger));
+        p.addLast("handler", new HttpFrontendHandler(data.users(), protocols, logger));
         p.remove(this);
     }
 
