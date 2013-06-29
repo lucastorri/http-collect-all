@@ -1,8 +1,11 @@
+#!/usr/bin/env node
+
 var fs = require('fs');
 var q = require('q');
 
 var models = require('./models');
 var parser = require('./http-parser');
+var output = process.argv[0];
 
 
 var groups = {
@@ -21,7 +24,7 @@ var exit = {
     process.exit(1);
   },
   withNoEntryLeft: function() {
-    process.exit(2);
+    process.exit(20);
   }
 };
 
@@ -51,7 +54,7 @@ var files = req.then(function(req) {
   return Object.keys(req.grouped).map(function(group) {
     var httpMessage = parse(req.grouped[group], groups[group]);
     var m = req.metadata;
-    var file = m.user + '_' + m.bucket + '_' + m.request + '_' + group + '.json';
+    var file = output + '/' + m.user + '_' + m.bucket + '_' + m.request + '_' + group + '.json';
     return q.nfcall(fs.writeFile, file, JSON.stringify(httpMessage));
   });
 })

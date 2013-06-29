@@ -1,20 +1,24 @@
 #!/bin/bash
 
+SCRIPT_DIR=`dirname "$0"`
+OUT_DIR=${1:-.}
+
 while true
 do
-  result=`node export-entry.js`
+  output=`node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"`
 
-  case "$?" in
+  code="$?"
+  case "$code" in
   0)
     echo Finished
     ;;
-  1)
-    echo result
-    sleep 120
-    ;;
-  2)
+  20)
     echo None left
     sleep 10
+    ;;
+  *)
+    echo $output
+    exit "$code"
     ;;
   esac
 done
