@@ -1,5 +1,6 @@
 package collector.http;
 
+import collector.Main;
 import collector.server.ProtocolHandler;
 import collector.server.ProtocolHandler.Protocol;
 import collector.data.UserRegistry;
@@ -110,7 +111,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                             p.addLast("ssl", new SslHandler(engine));
                         }
                         p.addLast("store", backendLogger);
-                        p.addLast(new ByteLoggingHandler(LogLevel.INFO));
+                        if (Main.debug) p.addLast(new ByteLoggingHandler(LogLevel.INFO));
                         p.addLast("encode", new HttpRequestEncoder());
                         p.addLast("decode", new HttpResponseDecoder());
                         //p.addLast("inflater", new HttpContentDecompressor()); //not needed now, as we don't inspect the message content

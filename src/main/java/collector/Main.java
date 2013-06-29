@@ -4,9 +4,16 @@ import collector.data.RequestData;
 import collector.data.UserRegistry;
 import collector.server.Server;
 import collector.server.ServerHandlerFactory;
+
+import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.parseInt;
 
 public class Main {
+
+    public static final boolean debug;
+    static {
+        debug = parseBoolean(env("HC_DEBUG", "false"));
+    }
 
     public static void main(String[] args) {
         String mongoHost = env("MONGO_HOST", "localhost");

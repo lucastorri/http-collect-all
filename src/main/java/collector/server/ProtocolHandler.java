@@ -1,5 +1,6 @@
 package collector.server;
 
+import collector.Main;
 import collector.data.DataStores;
 import collector.http.HttpFrontendHandler;
 import collector.log.LoggingHandler;
@@ -116,10 +117,9 @@ public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
         String requestId = Long.toString(System.nanoTime());
 
         ChannelPipeline p = ctx.pipeline();
-        int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
         LoggingHandler logger = new LoggingHandler(data.requests(), LoggingHandler.Layer.FRONTEND, requestId);
         p.addLast("store", logger);
-        p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
+        if (Main.debug) p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());

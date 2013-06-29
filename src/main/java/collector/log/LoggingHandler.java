@@ -77,9 +77,8 @@ public class LoggingHandler extends ChannelDuplexHandler implements ChannelInbou
         return requestId + "-" + requestNumber;
     }
 
-    public LoggingHandler metadata(Set<ProtocolHandler.Protocol> protocols, int port, String user, String bucket) {
+    public void metadata(Set<ProtocolHandler.Protocol> protocols, int port, String user, String bucket) {
         requests.metadata(id(), user, bucket, port, protocols);
-        return this;
     }
 
     public void next() {
