@@ -1,3 +1,12 @@
+http-collector:
+  group:
+    - present
+  user.present:
+    - gid_from_name: true
+    - createhome: false
+    - require:
+      - group: http-collector
+
 /etc/init/http-collector.conf:
   file.managed:
     - source: salt://http-collector/http-collector.conf

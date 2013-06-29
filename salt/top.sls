@@ -5,5 +5,6 @@ base:
     - redis
     - mongodb
     - http-collector
+    - hc-dump
     - monit
     - tools

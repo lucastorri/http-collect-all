@@ -3,3 +3,6 @@ vim:
 
 htop:
   pkg.installed
+
+curl:
+  pkg.installed

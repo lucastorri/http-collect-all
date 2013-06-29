@@ -6,3 +6,5 @@ redis-service:
     - name: redis-server
     - require:
       - pkg: redis-server
+
+# echo -e "SET lucastorri true\r\n" | netcat localhost 6379 # set myself

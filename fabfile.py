@@ -13,14 +13,15 @@ def create_box():
     security_groups=['quick-start-1'])
   print(a)
 
-def copy_base_files():
+def copy_salt_files():
   run('rm -rf /srv/salt')
   put('salt', '/srv/')
   put('bootstrap.sh', '/opt', mirror_local_mode=True)
 
 def copy_all_files():
-  copy_base_files()
+  copy_salt_files()
   copy_hc_files()
+  copy_hc_dump_files()
 
 def make_http_collector():
   local('mvn -f http-collector/pom.xml package')
@@ -28,6 +29,10 @@ def make_http_collector():
 def copy_hc_files():
   make_http_collector()
   put('http-collector/target/http-collector', '/usr/local/bin/', mirror_local_mode=True)
+
+def copy_hc_dump_files():
+  run('rm -rf /opt/hc-dump')
+  put('hc-dump', '/opt/', mirror_local_mode=True)
 
 def bootstrap():
   copy_all_files()

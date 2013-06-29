@@ -1,3 +1,6 @@
 [submodule "http-collector"]
 	path = http-collector
 	url = https://lucastorri@bitbucket.org/lucastorri/http-collector.git
+[submodule "hc-dump"]
+	path = hc-dump
+	url = https://lucastorri@bitbucket.org/lucastorri/hc-dump.git
