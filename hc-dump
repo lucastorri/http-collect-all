@@ -9,9 +9,6 @@ done
 SCRIPT_DIR=`dirname "$SCRIPT"`
 OUT_DIR=${1:-.}
 
-echo $SCRIPT_DIR
-exit 0
-
 while true
 do
   output=`node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"`
