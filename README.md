@@ -216,3 +216,8 @@ curl -kv https://127.0.0.1:443 -H "Host: www.google.com.lucastorri-1234.local"
 ```
 
 
+## Creating a simple request
+
+```
+echo -e "GET / HTTP/1.1\r\nHost: www.google.com.lucastorri-666.local\r\n\r\n" | nc -i 1 localhost 80
+```
