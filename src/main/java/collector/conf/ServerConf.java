@@ -6,17 +6,20 @@ import collector.server.ProtocolHandler;
 import io.netty.channel.ChannelHandler;
 
 import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.parseInt;
+import static java.util.Collections.unmodifiableList;
 
 public enum ServerConf implements Closeable {
 
     instance;
 
-    private final int port;
     private final boolean debug;
     private final String host;
+    private final List<Integer> ports;
     private final RequestData requests;
     private final UserRegistry users;
 
@@ -30,7 +33,7 @@ public enum ServerConf implements Closeable {
         users = UserRegistry.connect(redisHost, redisPort);
 
         host = env("HC_HOST", "local");
-        port = parseInt(env("HC_PORT", "8080"));
+        ports = parseInts(env("HC_PORTS", "8080"));
 
         debug = parseBoolean(env("HC_DEBUG", "false"));
     }
@@ -49,10 +52,6 @@ public enum ServerConf implements Closeable {
 
     public String hostname() {
         return this.host;
-    }
-
-    public int port() {
-        return this.port;
     }
 
     public ChannelHandler handler() {
@@ -75,4 +74,16 @@ public enum ServerConf implements Closeable {
         return (value != null) ? value : orElse;
     }
 
+    private static List<Integer> parseInts(String ints) {
+        String[] split = ints.split(",");
+        ArrayList parsed = new ArrayList(split.length);
+        for (String i : split) {
+            parsed.add(parseInt(i.trim()));
+        }
+        return unmodifiableList(parsed);
+    }
+
+    public List<Integer> ports() {
+        return ports;
+    }
 }
