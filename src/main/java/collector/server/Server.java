@@ -12,12 +12,10 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 
 public class Server {
 
-    private final int port;
-    private ServerHandlerFactory handler;
+    private final ServerConf conf;
 
-    public Server(int port, ServerHandlerFactory handler) {
-        this.port = port;
-        this.handler = handler;
+    public Server(ServerConf conf) {
+        this.conf = conf;
     }
 
     public void run() throws Exception {
@@ -31,11 +29,11 @@ public class Server {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
-                        p.addLast(handler.newInstance());
+                        p.addLast(conf.handler());
                     }
                 });
 
-            Channel ch = b.bind(port).sync().channel();
+            Channel ch = b.bind(conf.port()).sync().channel();
             ch.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();

@@ -1,34 +1,15 @@
 package collector;
 
-import collector.data.RequestData;
-import collector.data.UserRegistry;
 import collector.server.Server;
-import collector.server.ServerHandlerFactory;
-
-import static java.lang.Boolean.parseBoolean;
-import static java.lang.Integer.parseInt;
+import collector.server.ServerConf;
 
 public class Main {
 
-    public static final boolean debug;
-    static {
-        debug = parseBoolean(env("HC_DEBUG", "false"));
-    }
-
     public static void main(String[] args) {
-        String mongoHost = env("MONGO_HOST", "localhost");
-        String redisHost = env("REDIS_HOST", "localhost");
-        int mongoPort = parseInt(env("MONGO_PORT", "27017"));
-        int redisPort = parseInt(env("REDIS_PORT", "6379"));
-        int port = parseInt(env("HC_PORT", "8080"));
 
-        try(
-            RequestData requests = RequestData.connect(mongoHost, mongoPort);
-            UserRegistry users = UserRegistry.connect(redisHost, redisPort);
-        ) {
+        try(ServerConf conf = ServerConf.instance) {
 
-            ServerHandlerFactory handler = new ServerHandlerFactory(users, requests);
-            Server s = new Server(port, handler);
+            Server s = new Server(conf);
             s.run();
 
         } catch (Exception e) {
@@ -37,10 +18,5 @@ public class Main {
         }
 
         System.exit(0);
-    }
-
-    private static String env(String flag, String orElse) {
-        String value = System.getenv(flag);
-        return (value != null) ? value : orElse;
     }
 }

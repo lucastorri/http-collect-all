@@ -1,9 +1,6 @@
 package collector.server;
 
-import collector.Main;
-import collector.data.DataStores;
 import collector.http.HttpFrontendHandler;
-import collector.log.LoggingHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundByteHandlerAdapter;
@@ -26,17 +23,17 @@ import java.util.Set;
 
 public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
 
-    private final DataStores data;
+    private final ServerConf serverConf;
     private final boolean detectGzip;
     private final boolean detectSsl;
     private final Set<Protocol> protocols;
 
-    public ProtocolHandler(DataStores data) {
-        this(data, true, true, Collections.<Protocol>emptySet());
+    public ProtocolHandler(ServerConf conf) {
+        this(conf, true, true, Collections.<Protocol>emptySet());
     }
 
-    private ProtocolHandler(DataStores data, boolean detectSsl, boolean detectGzip, Set<Protocol> protocols) {
-        this.data = data;
+    private ProtocolHandler(ServerConf conf, boolean detectSsl, boolean detectGzip, Set<Protocol> protocols) {
+        this.serverConf = conf;
         this.detectSsl = detectSsl;
         this.detectGzip = detectGzip;
         this.protocols = protocols;
@@ -101,7 +98,7 @@ public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
         engine.setUseClientMode(false);
 
         p.addLast("ssl", new SslHandler(engine));
-        p.addLast("unificationA", new ProtocolHandler(data, false, detectGzip, protocolsWith(Protocol.SSL)));
+        p.addLast("unificationA", new ProtocolHandler(serverConf, false, detectGzip, protocolsWith(Protocol.SSL)));
         p.remove(this);
     }
 
@@ -109,21 +106,22 @@ public class ProtocolHandler extends ChannelInboundByteHandlerAdapter {
         ChannelPipeline p = ctx.pipeline();
         p.addLast("gzipdeflater", ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP));
         p.addLast("gzipinflater", ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
-        p.addLast("unificationB", new ProtocolHandler(data, detectSsl, false, protocolsWith(Protocol.GZIP)));
+        p.addLast("unificationB", new ProtocolHandler(serverConf, detectSsl, false, protocolsWith(Protocol.GZIP)));
         p.remove(this);
     }
 
     private void switchToHttp(ChannelHandlerContext ctx) {
         String requestId = Long.toString(System.nanoTime());
+        int port = ((InetSocketAddress) ctx.channel().localAddress()).getPort();
+        RequestConf reqConf = new RequestConf(serverConf, requestId, port, protocols);
 
         ChannelPipeline p = ctx.pipeline();
-        LoggingHandler logger = new LoggingHandler(data.requests(), LoggingHandler.Layer.FRONTEND, requestId);
-        p.addLast("store", logger);
-        if (Main.debug) p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
+        p.addLast("store", reqConf.frontendHandler());
+        if (serverConf.debug()) p.addLast("logging", new ByteLoggingHandler(LogLevel.INFO));
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
-        p.addLast("handler", new HttpFrontendHandler(data.users(), protocols, logger));
+        p.addLast("handler", new HttpFrontendHandler(serverConf, reqConf));
         p.remove(this);
     }
 

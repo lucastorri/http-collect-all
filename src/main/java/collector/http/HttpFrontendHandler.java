@@ -1,10 +1,7 @@
 package collector.http;
 
-import collector.Main;
-import collector.server.ProtocolHandler;
-import collector.server.ProtocolHandler.Protocol;
-import collector.data.UserRegistry;
-import collector.log.LoggingHandler;
+import collector.server.RequestConf;
+import collector.server.ServerConf;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -15,10 +12,8 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.ssl.SslHandler;
 
 import javax.net.ssl.SSLEngine;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,49 +26,36 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
-    private static final String HOSTNAME = "local";
-    public static final String HOST_PATTERN = "(.+)\\.(\\w[\\w\\d]*)-?([\\d\\w-]+)?\\." + HOSTNAME;
+    private static final String HOST_PATTERN = "(.+)\\.(\\w[\\w\\d]*)-?([\\d\\w-]+)?\\.%s";
 
-    private final UserRegistry users;
-    private final LoggingHandler frontendLogger;
-    private final LoggingHandler backendLogger;
-    private final Set<ProtocolHandler.Protocol> frontendProtocols;
+    private final ServerConf serverConf;
+    private final RequestConf reqConf;
 
     private ChannelFuture backendFuture;
     private String user;
     private String bucket;
 
-    public HttpFrontendHandler(UserRegistry users, Set<Protocol> frontendProtocols, LoggingHandler logger) {
-        this.users = users;
-        this.frontendProtocols = frontendProtocols;
-        this.frontendLogger = logger;
-        this.backendLogger = frontendLogger.backend();
+    public HttpFrontendHandler(ServerConf serverConf, RequestConf reqConf) {
+        this.serverConf = serverConf;
+        this.reqConf = reqConf;
     }
 
     private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
-        return new URI(scheme() + host(req) + ":" + port(ctx) + req.getUri());
+        return new URI(scheme() + host(req) + ":" + reqConf.port() + req.getUri());
     }
 
     private String scheme() {
-        return isHttps() ? "https://" : "http://";
+        return reqConf.isHttps() ? "https://" : "http://";
     }
 
     private String host(HttpRequest req) {
-        Pattern pattern = Pattern.compile(HOST_PATTERN);
+        Pattern pattern = Pattern.compile(String.format(HOST_PATTERN, serverConf.hostname()));
         Matcher matcher = pattern.matcher(getHost(req));
         matcher.find();
         String destHost = matcher.group(1);
         user = matcher.group(2);
         bucket = matcher.group(3);
         return destHost;
-    }
-
-    private int port(ChannelHandlerContext ctx) {
-        return ((InetSocketAddress) ctx.channel().localAddress()).getPort();
-    }
-
-    private boolean isHttps() {
-        return frontendProtocols.contains(ProtocolHandler.Protocol.SSL);
     }
 
     private HttpRequest frontendRequestToBackendRequest(URI backendUri, HttpRequest inboundHeader) {
@@ -93,9 +75,9 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
             URI backendUri = createBackendUriFromFrontendReq(req, ctx);
             final HttpRequest backendReq = frontendRequestToBackendRequest(backendUri, req);
             final Channel frontendChannel = ctx.channel();
-            frontendLogger.metadata(frontendProtocols, port(ctx), user, bucket);
+            reqConf.metadata(user, bucket);
 
-            if (users.isRegistered(user)) {
+            if (serverConf.users().isRegistered(user)) {
 
                 Bootstrap b = new Bootstrap();
                 b.group(frontendChannel.eventLoop())
@@ -104,18 +86,18 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
-                        if (isHttps()) {
+                        if (reqConf.isHttps()) {
                             SSLEngine engine = //TODO create real ssl certificate check
                                 SecureChatSslContextFactory.getClientContext().createSSLEngine();
                             engine.setUseClientMode(true);
                             p.addLast("ssl", new SslHandler(engine));
                         }
-                        p.addLast("store", backendLogger);
-                        if (Main.debug) p.addLast(new ByteLoggingHandler(LogLevel.INFO));
+                        p.addLast("store", reqConf.backendHandler());
+                        if (serverConf.debug()) p.addLast(new ByteLoggingHandler(LogLevel.INFO));
                         p.addLast("encode", new HttpRequestEncoder());
                         p.addLast("decode", new HttpResponseDecoder());
                         //p.addLast("inflater", new HttpContentDecompressor()); //not needed now, as we don't inspect the message content
-                        p.addLast("handler", new HttpBackendHandler(frontendChannel, frontendLogger, backendLogger));
+                        p.addLast("handler", new HttpBackendHandler(reqConf, frontendChannel));
                         }
                     });
                 final long timeBeforeConnect = System.currentTimeMillis();
@@ -174,7 +156,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        frontendLogger.error(cause);
+        reqConf.frontendLogger().error(cause);
         cause.printStackTrace();
         ctx.close();
     }

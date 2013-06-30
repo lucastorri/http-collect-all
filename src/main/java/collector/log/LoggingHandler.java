@@ -1,14 +1,14 @@
 package collector.log;
 
-import collector.server.ProtocolHandler;
 import collector.data.RequestData;
+import collector.server.ProtocolHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 
 import java.util.Set;
 
 @ChannelHandler.Sharable
-public class LoggingHandler extends ChannelDuplexHandler implements ChannelInboundByteHandler, ChannelOutboundByteHandler {
+public class LoggingHandler extends ChannelDuplexHandler implements ChannelInboundByteHandler, ChannelOutboundByteHandler, RequestLogger {
 
     private final RequestData requests;
 
@@ -77,19 +77,23 @@ public class LoggingHandler extends ChannelDuplexHandler implements ChannelInbou
         return requestId + "-" + requestNumber;
     }
 
+    @Override
     public void metadata(Set<ProtocolHandler.Protocol> protocols, int port, String user, String bucket) {
         requests.metadata(id(), user, bucket, port, protocols);
     }
 
+    @Override
     public void next() {
         inboundCount = outboundCount = 0;
         requestNumber++;
     }
 
+    @Override
     public void closed() {
         requests.closed(id(), layer);
     }
 
+    @Override
     public void error(Throwable cause) {
         requests.error(id(), layer, cause);
     }

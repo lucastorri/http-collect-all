@@ -1,6 +1,6 @@
 package collector.http;
 
-import collector.log.LoggingHandler;
+import collector.server.RequestConf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,15 +13,13 @@ import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
 
 public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Object> {
 
-    private final Channel frontendChannel;
-    private LoggingHandler frontendLogger;
-    private LoggingHandler backendLogger;
+    private final RequestConf reqConf;
+    private final Channel frontend;
     private boolean keepAlive;
 
-    public HttpBackendHandler(Channel frontendChannel, LoggingHandler frontendLogger, LoggingHandler backendLogger) {
-        this.frontendChannel = frontendChannel;
-        this.frontendLogger = frontendLogger;
-        this.backendLogger = backendLogger;
+    public HttpBackendHandler(RequestConf reqConf, Channel frontend) {
+        this.reqConf = reqConf;
+        this.frontend = frontend;
     }
 
     @Override
@@ -33,13 +31,11 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
         if (msg instanceof HttpContent) {
             msg = ((HttpContent) msg).copy();
         }
-        frontendChannel.write(msg);
-        frontendChannel.flush();
+        frontend.write(msg);
+        frontend.flush();
 
         if (msg instanceof LastHttpContent) {
-            backendLogger.closed();
-            backendLogger.next();
-            frontendLogger.next();
+            reqConf.next();
         }
     }
 
@@ -47,15 +43,15 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
     public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
         if (!keepAlive) {
             ctx.flush().addListener(ChannelFutureListener.CLOSE);
-            frontendChannel.flush().addListener(ChannelFutureListener.CLOSE);
+            frontend.flush().addListener(ChannelFutureListener.CLOSE);
         }
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        backendLogger.error(cause);
+        reqConf.backendLogger().error(cause);
         cause.printStackTrace();
         ctx.close();
-        frontendChannel.close();
+        frontend.close();
     }
 }

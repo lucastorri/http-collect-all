@@ -1,8 +1,8 @@
 package collector.data;
 
-import collector.server.ProtocolHandler;
 import collector.log.LoggingHandler.Direction;
 import collector.log.LoggingHandler.Layer;
+import collector.server.ProtocolHandler;
 import com.allanbank.mongodb.*;
 import com.allanbank.mongodb.bson.builder.BuilderFactory;
 import com.allanbank.mongodb.bson.builder.DocumentBuilder;
