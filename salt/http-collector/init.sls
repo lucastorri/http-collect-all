@@ -12,7 +12,15 @@ http-collector:
 
 /etc/authbind/byport/80:
   file.managed:
-    - mode: 500
+    - mode: 755
+    - user: http-collector
+    - require:
+      - pkg: authbind
+      - user: http-collector
+
+/etc/authbind/byport/443:
+  file.managed:
+    - mode: 755
     - user: http-collector
     - require:
       - pkg: authbind
