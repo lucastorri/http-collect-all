@@ -13,12 +13,16 @@ def create_box():
     security_groups=['quick-start-1'])
   print(a)
 
+def git_pull_submodules():
+  local('git submodule foreach "git pull"')
+
 def copy_salt_files():
   run('rm -rf /srv/salt')
   put('salt', '/srv/')
   put('bootstrap.sh', '/opt', mirror_local_mode=True)
 
 def copy_all_files():
+  git_pull_submodules():
   copy_salt_files()
   copy_hc_files()
   copy_hc_dump_files()

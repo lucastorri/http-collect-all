@@ -9,10 +9,6 @@ allow localhost
 include /etc/monit/conf.d/*
 
 
-check file monitrc with path /etc/monit/monitrc
-  if changed timestamp
-    then exec "/usr/sbin/service monit reload"
-
 check process redis-server with pidfile /var/run/redis/redis-server.pid
   start program = "/usr/sbin/service redis-server start"
   stop program = "/usr/sbin/service redis-server stop"
@@ -24,3 +20,7 @@ check process mongod with pidfile /var/lib/mongodb/mongod.lock
 check process http-collector with pidfile /var/run/http-collector/http-collector.pid
   start program = "/usr/sbin/service http-collector start"
   stop program = "/usr/sbin/service http-collector stop"
+
+check process hc-dump with pidfile /var/run/hc-dump/hc-dump.pid
+  start program = "/usr/sbin/service hc-dump start"
+  stop program = "/usr/sbin/service hc-dump stop"
