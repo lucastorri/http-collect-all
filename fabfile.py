@@ -22,7 +22,7 @@ def copy_salt_files():
   put('bootstrap.sh', '/opt', mirror_local_mode=True)
 
 def copy_all_files():
-  git_pull_submodules():
+  git_pull_submodules()
   copy_salt_files()
   copy_hc_files()
   copy_hc_dump_files()
