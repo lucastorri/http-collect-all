@@ -1,3 +1,6 @@
+authbind:
+  pkg.installed
+
 http-collector:
   group:
     - present
@@ -6,6 +9,15 @@ http-collector:
     - createhome: false
     - require:
       - group: http-collector
+
+/etc/authbind/byport/80:
+  file.managed:
+    - mode: 500
+    - user: http-collector
+    - require:
+      - pkg: authbind
+      - user: http-collector
+
 
 /etc/init/http-collector.conf:
   file.managed:
