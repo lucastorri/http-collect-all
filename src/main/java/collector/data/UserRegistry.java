@@ -20,6 +20,7 @@ public class UserRegistry implements Closeable {
         try {
             return ud.get() != null;
         } catch (Exception e) {
+            e.printStackTrace(System.err);
             return false;
         }
     }

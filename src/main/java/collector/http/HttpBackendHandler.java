@@ -50,7 +50,7 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         reqConf.backendLogger().error(cause);
-        cause.printStackTrace();
+        cause.printStackTrace(System.err);
         ctx.close();
         frontend.close();
     }
