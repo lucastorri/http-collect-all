@@ -58,7 +58,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.2.1</version>
                 <configuration>
-                    <mainClass>collector.server.Server</mainClass>
+                    <mainClass>collector.Main</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -80,7 +80,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>collector.server.Server</mainClass>
+                            <mainClass>collector.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
