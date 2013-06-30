@@ -1,4 +1,4 @@
-package collector.server;
+package collector.conf;
 
 import collector.log.LoggingHandler;
 import collector.log.RequestLogger;

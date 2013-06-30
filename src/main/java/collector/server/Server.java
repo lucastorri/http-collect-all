@@ -1,5 +1,6 @@
 package collector.server;
 
+import collector.conf.ServerConf;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;

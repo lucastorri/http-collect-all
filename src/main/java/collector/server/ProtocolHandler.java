@@ -1,5 +1,7 @@
 package collector.server;
 
+import collector.conf.RequestConf;
+import collector.conf.ServerConf;
 import collector.http.HttpFrontendHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;

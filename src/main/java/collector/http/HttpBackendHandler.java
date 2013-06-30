@@ -1,6 +1,6 @@
 package collector.http;
 
-import collector.server.RequestConf;
+import collector.conf.RequestConf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;

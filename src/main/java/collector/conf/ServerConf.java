@@ -1,7 +1,8 @@
-package collector.server;
+package collector.conf;
 
 import collector.data.RequestData;
 import collector.data.UserRegistry;
+import collector.server.ProtocolHandler;
 import io.netty.channel.ChannelHandler;
 
 import java.io.Closeable;

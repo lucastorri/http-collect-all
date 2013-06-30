@@ -1,7 +1,7 @@
 package collector.http;
 
-import collector.server.RequestConf;
-import collector.server.ServerConf;
+import collector.conf.RequestConf;
+import collector.conf.ServerConf;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;

@@ -1,7 +1,7 @@
 package collector;
 
 import collector.server.Server;
-import collector.server.ServerConf;
+import collector.conf.ServerConf;
 
 public class Main {
 
