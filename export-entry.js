@@ -7,6 +7,8 @@ var models = require('./models');
 var parser = require('./http-parser');
 var output = process.argv[2];
 
+var writefile = q.denodeify(fs.writeFile);
+var mkdirp = q.denodeify(require('mkdirp'));
 
 var groups = {
   'FRONTEND_INBOUND': parser.request,
@@ -53,12 +55,18 @@ var req = models.Closed.findOneQ({})
 });
 
 var files = req.then(function(req) {
-  return Object.keys(req.grouped).map(function(group) {
+  var m = req.metadata;
+  var dir = output + '/' + m.user + '/' + m.bucket + '/' + m.request + '/';
+  var files = Object.keys(req.grouped).map(function(group) {
     var httpMessage = parse(req.grouped[group], groups[group]);
-    var m = req.metadata;
-    var file = output + '/' + m.user + '_' + m.bucket + '_' + m.request + '_' + group + '.json';
-    return q.nfcall(fs.writeFile, file, JSON.stringify(httpMessage));
+    //TODO append extra information on httpMessage
+    var file = dir + group + '.json';
+    return mkdirp(dir).then(function() {
+      return writefile(file, JSON.stringify(httpMessage));
+    });
   });
+  files.push(writefile(dir + 'metadata.json', JSON.stringify(req.metadata)));
+  return files;
 })
 .all();
 

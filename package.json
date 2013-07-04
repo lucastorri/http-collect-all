@@ -11,7 +11,8 @@
     "prettyjson": ">= 0.8.1",
     "hexy": ">= 0.2.5",
     "q": ">= 0.9.6",
-    "mongoose-q": ">= 0.0.4"
+    "mongoose-q": ">= 0.0.4",
+    "mkdirp": ">= 0.3.5"
   },
   "repository": "",
   "author": "",
