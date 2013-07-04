@@ -59,7 +59,6 @@ var files = req.then(function(req) {
   var dir = output + '/' + m.user + '/' + m.bucket + '/' + m.request + '/';
   var files = Object.keys(req.grouped).map(function(group) {
     var httpMessage = parse(req.grouped[group], groups[group]);
-    //TODO append extra information on httpMessage
     var file = dir + group + '.json';
     return mkdirp(dir).then(function() {
       return writefile(file, JSON.stringify(httpMessage));
@@ -100,8 +99,8 @@ function chunksGroupedByLayerAndDirection(request) {
   };
 }
 
-function parse(chunks, message) {
-  var p = parser.Parser(message);
+function parse(chunks, type) {
+  var p = parser.Parser(type);
   chunks.forEach(function(chunk) {
     try {
       p.parse(chunk.content.buffer);
@@ -110,5 +109,9 @@ function parse(chunks, message) {
       throw err;
     }
   });
-  return p.end();
+  var parsed = p.end();
+  parsed.extra = {
+    timings: chunks.map(function(c) { return c.timestamp; })
+  };
+  return parsed;
 }

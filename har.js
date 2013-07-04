@@ -32,8 +32,8 @@ function baseHar(id) {
       pages: [
         {
           startedDateTime: undefined,
-          id: id,
-          title: "http-collector bucket #n",
+          id: 'all',
+          title: 'http-collector bucket ' + id,
           pageTimings: {
             onContentLoad: 0,
             onLoad: 0,
@@ -50,19 +50,17 @@ function baseHar(id) {
 
 function addEntry(req, res, metadata, har) {
 
+  var start = new Date(req.extra.timings[0]).toJSON();
   if (!har.log.pages[0].startedDateTime) {
-    har.log.pages[0].startedDateTime = new Date(req.timestamp).toJSON();
+    har.log.pages[0].startedDateTime = start;
   }
 
-  console.log(req)
-  var time = res.timestamp - req.timestamp;
-  time = (time % 2 == 0) ? time : time - 1;
-
+  var time = res.extra.timings[res.extra.timings.length - 1] - req.extra.timings[0]
   var url = (metadata.ssl ? 'https' : 'http') + '://' + req.headers['host'] + ':' + metadata.port + req.path;
 
   var entry = {
-    pageref: metadata.request,
-    startedDateTime: new Date(req.timestamp).toJSON(),
+    pageref: 'all',
+    startedDateTime: start,
     time: time,
     request: {
       method: req.method,
@@ -86,7 +84,7 @@ function addEntry(req, res, metadata, har) {
       headers: res.headers,
       content: {
         size: res.content.length,
-        mimeType: res.headers['content-type'],
+        mimeType: findHeader(res, 'content-type').value,
         text: res.content.utf8Slice()
       },
       redirectURL: "",
@@ -111,19 +109,23 @@ function addEntry(req, res, metadata, har) {
     comment: ""
   };
 
-  if (res.headers['transfer-encoding'] == 'chunked') {
+  if (findHeader(res, 'transfer-encoding').value == 'chunked') {
     res.content = unchunk(res.content);
   }
 
   var deferred = q.defer();
 
-  decode(res.content, res.headers['content-encoding'], function(a, buf) {
+  decode(res.content, findHeader(res, 'content-encoding').value, function(a, buf) {
     entry.response.content.text = buf.utf8Slice();
     har.log.entries.push(entry);
     deferred.resolve(entry);
   });
 
   return deferred.promise;
+}
+
+function findHeader(msg, name) {
+  return (msg.headers.filter(function(h) { return h.name == name; })[0] || {})
 }
 
 function unchunk(chunkedContent) {

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]
+do
+  SCRIPT=`readlink "$0"`
+done
+
+PORT=3000
+SCRIPT_DIR=`dirname "$SCRIPT"`
+OUT_DIR=${1:-.}
+
+HE_PORT=$PORT node "$SCRIPT_DIR/har-export.js" "$OUT_DIR"
