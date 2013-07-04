@@ -56,6 +56,7 @@ app.get('/:user/:bucket.har', function(req, res){
     res.send(json);
   })
   .fail(function(err) {
+    res.status(404);
     res.send({ error: err });
   });
 });
