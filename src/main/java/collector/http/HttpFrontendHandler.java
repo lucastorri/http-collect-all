@@ -146,12 +146,14 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
     @Override
     public void endMessageReceived(final ChannelHandlerContext ctx) throws Exception {
-        backendFuture.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                future.channel().flush();
-            }
-        });
+        if (backendFuture != null) {
+            backendFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    future.channel().flush();
+                }
+            });
+        }
     }
 
     @Override
