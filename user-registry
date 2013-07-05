@@ -6,8 +6,8 @@ do
   SCRIPT=`readlink "$0"`
 done
 
-PORT=10230
+PORT=10111
 SCRIPT_DIR=`dirname "$SCRIPT"`
-OUT_DIR=${1:-.}
+KEY=`cat $SCRIPT_DIR/key`
 
-HE_PORT=$PORT node "$SCRIPT_DIR/har-export.js" "$OUT_DIR"
+UR_KEY=$KEY UR_PORT=$PORT node "$SCRIPT_DIR/user-registry.js"

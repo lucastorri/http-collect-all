@@ -50,7 +50,7 @@ function message(dir, request) {
 
 var express = require('express');
 var app = express();
-app.get('/:user/:bucket.har', function(req, res){
+app.get('/:user/:bucket.har', function(req, res) {
   res.set('Content-Type', 'application/json');
   createHar(req.params.user, req.params.bucket).then(function(json) {
     res.send(json);

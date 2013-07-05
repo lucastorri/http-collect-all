@@ -33,6 +33,7 @@ var exit = {
 };
 
 //TODO to enable the script for parallel use: http://docs.mongodb.org/manual/tutorial/isolate-sequence-of-operations/
+//TODO make it more efficient with trigger: http://stackoverflow.com/questions/9691316/how-to-listen-for-changes-to-a-mongodb-collection
 var req = models.Closed.findOneQ({})
 .then(function(closed) {
   if (!closed) exit.withNoEntryLeft();

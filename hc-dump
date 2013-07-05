@@ -10,6 +10,7 @@ SCRIPT_DIR=`dirname "$SCRIPT"`
 OUT_DIR=${1:-.}
 WAIT_INTERVAL=10
 
+#TODO make the following loop inside the js file
 while true
 do
   node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"
