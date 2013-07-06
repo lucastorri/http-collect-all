@@ -24,3 +24,11 @@ check process http-collector with pidfile /var/run/http-collector/http-collector
 check process hc-dump with pidfile /var/run/hc-dump/hc-dump.pid
   start program = "/usr/sbin/service hc-dump start"
   stop program = "/usr/sbin/service hc-dump stop"
+
+check process har-export with pidfile /var/run/hc-dump/har-export.pid
+  start program = "/usr/sbin/service har-export start"
+  stop program = "/usr/sbin/service har-export stop"
+
+check process user-registry with pidfile /var/run/hc-dump/user-registry.pid
+  start program = "/usr/sbin/service user-registry start"
+  stop program = "/usr/sbin/service user-registry stop"
