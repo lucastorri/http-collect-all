@@ -13,7 +13,7 @@ WAIT_INTERVAL=10
 #TODO make the following loop inside the js file
 while true
 do
-  node "$SCRIPT_DIR/export-entry.js" "$OUT_DIR"
+  node "$SCRIPT_DIR/../lib/export-entry.js" "$OUT_DIR"
   code="$?"
 
   case "$code" in

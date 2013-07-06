@@ -1,0 +1,13 @@
+#!/bin/bash
+
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]
+do
+  SCRIPT=`readlink "$0"`
+done
+
+PORT=10111
+SCRIPT_DIR=`dirname "$SCRIPT"`
+KEY=`cat $SCRIPT_DIR/../config/key`
+
+UR_KEY=$KEY UR_PORT=$PORT node "$SCRIPT_DIR/../lib/user-registry.js"
