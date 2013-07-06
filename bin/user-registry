@@ -10,4 +10,4 @@ PORT=10111
 SCRIPT_DIR=`dirname "$SCRIPT"`
 KEY=`cat $SCRIPT_DIR/../config/key`
 
-UR_KEY=$KEY UR_PORT=$PORT node "$SCRIPT_DIR/../lib/user-registry.js"
+KEY=$KEY UR_PORT=$PORT node "$SCRIPT_DIR/../lib/user-registry.js"
