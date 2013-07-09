@@ -1,4 +1,12 @@
 # Routes
 # ~~~~
 
+# Root
 GET     /                                 controllers.Root.index
+GET     /welcome                          controllers.Root.welcome
+
+
+# Auth
+GET     /login                            controllers.Authentication.login
+GET     /logout                           controllers.Authentication.logout
+GET     /auth                             controllers.Authentication.auth

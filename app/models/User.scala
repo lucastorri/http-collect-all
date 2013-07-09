@@ -5,7 +5,11 @@ import scalikejdbc.SQLInterpolation._
 
 case class User(
   id: Long, 
-  username: String) {
+  fid: String, 
+  username: String, 
+  firstName: Option[String] = None, 
+  middleName: Option[String] = None, 
+  lastName: Option[String] = None) {
 
   def save()(implicit session: DBSession = User.autoSession): User = User.save(this)(session)
 
@@ -18,11 +22,15 @@ object User extends SQLSyntaxSupport[User] {
 
   override val tableName = "users"
 
-  override val columns = Seq("id", "username")
+  override val columns = Seq("id", "fid", "username", "first_name", "middle_name", "last_name")
 
   def apply(u: ResultName[User])(rs: WrappedResultSet): User = new User(
     id = rs.long(u.id),
-    username = rs.string(u.username)
+    fid = rs.string(u.fid),
+    username = rs.string(u.username),
+    firstName = rs.stringOpt(u.firstName),
+    middleName = rs.stringOpt(u.middleName),
+    lastName = rs.stringOpt(u.lastName)
   )
       
   val u = User.syntax("u")
@@ -56,25 +64,45 @@ object User extends SQLSyntaxSupport[User] {
   }
       
   def create(
-    username: String)(implicit session: DBSession = autoSession): User = {
+    fid: String,
+    username: String,
+    firstName: Option[String] = None,
+    middleName: Option[String] = None,
+    lastName: Option[String] = None)(implicit session: DBSession = autoSession): User = {
     val generatedKey = withSQL {
       insert.into(User).columns(
-        column.username
+        column.fid,
+        column.username,
+        column.firstName,
+        column.middleName,
+        column.lastName
       ).values(
-        username
+        fid,
+        username,
+        firstName,
+        middleName,
+        lastName
       )
     }.updateAndReturnGeneratedKey.apply()
 
     User(
       id = generatedKey, 
-      username = username)
+      fid = fid,
+      username = username,
+      firstName = firstName,
+      middleName = middleName,
+      lastName = lastName)
   }
 
   def save(m: User)(implicit session: DBSession = autoSession): User = {
     withSQL { 
       update(User as u).set(
         u.id -> m.id,
-        u.username -> m.username
+        u.fid -> m.fid,
+        u.username -> m.username,
+        u.firstName -> m.firstName,
+        u.middleName -> m.middleName,
+        u.lastName -> m.lastName
       ).where.eq(u.id, m.id)
     }.update.apply()
     m
