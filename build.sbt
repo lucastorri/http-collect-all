@@ -10,3 +10,4 @@ val (p, c, s, ps) = (Programmer.syntax("p"), Company.syntax("c"), Skill.syntax("
 
 scalikejdbcSettings
 
+scalaVersion := "2.10.1"
