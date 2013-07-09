@@ -6,5 +6,4 @@ resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/release
 
 logLevel := Level.Warn
 
-addSbtPlugin("play" % "sbt-plugin" % "2.1.1")
-
+addSbtPlugin("play" % "sbt-plugin" % "2.1.2")
