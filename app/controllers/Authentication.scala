@@ -36,7 +36,7 @@ trait Authenticated {
 object Authenticated extends Authenticated {
 
   def orElse(r: Result) = new Authenticated {
-    override val _orElse = r
+    override protected val _orElse = r
   }
 
 }
@@ -46,7 +46,7 @@ trait Authentication extends Controller {
   val clientId = "423110074427115"
   val clientSecret = "9c71342a00df5d674c65aa9a470dc6ac"
   
-  val redirectUrl = s"http://localhost:9000${routes.Authentication.auth}"
+  val redirectUrl = s"http://localhost:9000${routes.Authentication.auth}" //req host, port and scheme
 
   def loginUrl(nonce: String) = s"http://www.facebook.com/dialog/oauth/?client_id=${clientId}&redirect_uri=${redirectUrl}&state=${nonce}"
   def tokenUrl(code: String) = s"https://graph.facebook.com/oauth/access_token?redirect_uri=${redirectUrl}&client_secret=${clientSecret}&client_id=${clientId}&code=${code}"
