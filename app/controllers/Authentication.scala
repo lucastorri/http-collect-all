@@ -17,21 +17,25 @@ case class AuthenticatedRequest[A](user: User, request: Request[A]) extends Wrap
 
 trait Authenticated {
 
-  type Handler[A] = AuthenticatedRequest[A] => Result
+  type ReqHandler[A] = AuthenticatedRequest[A] => Result
 
   protected val _orElse : Result = Forbidden
 
   def user[A](implicit req: Request[A]) =
     req.session.get("id").flatMap(id => User.find(id.toLong))
 
-  def apply[A](p: BodyParser[A])(h: Handler[A]) : Action[A] = Action(p) { implicit req : Request[A] =>
+  def apply[A](p: BodyParser[A])(h: ReqHandler[A]) : Action[A] = Action(p) { implicit req : Request[A] =>
     user
       .map(u => h(AuthenticatedRequest(u, req)))
       .getOrElse(_orElse)
   }
 
-  def apply(h: Handler[AnyContent]) : Action[AnyContent] =
+  def apply(h: ReqHandler[AnyContent]) : Action[AnyContent] =
     apply(parse.anyContent)(h)
+
+  //def apply(h: => Result) : Action[AnyContent] =
+    //apply(parse.anyContent)((req: Request[AnyContent]) => h)
+
 }
 object Authenticated extends Authenticated {
 
@@ -92,14 +96,14 @@ trait Authentication extends Controller {
 
     Async {
       newSession.fallbackTo(Future(session)).map { session =>
-        Redirect(routes.Root.index).withSession(session - ("fb-nonce"))
+        Redirect(routes.Root.index("")).withSession(session - ("fb-nonce"))
       }
     }
   }
 
   def logout = Action { implicit request =>
     val newSession = session - ("fb-nonce") - ("fb-token") - ("user") - ("id")
-    Redirect(routes.Root.index).withSession(newSession)
+    Redirect(routes.Root.index("")).withSession(newSession)
   }
 
   private def createNonce(): String =
