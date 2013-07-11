@@ -57,13 +57,13 @@ angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report'])
 .config(['$routeProvider', function($routeProvider) {
     $routeProvider
     .when('/buckets', {
-        templateUrl: '/template/buckets',
+        templateUrl: '/template/buckets', //use routes
         controller: 'BucketsCtrl',
         pageTitle: 'Buckets',
         activeTab: '#buckets-tab'
     })
     .when('/', {
-        templateUrl: '/template/home',
+        templateUrl: '/template/home',  //use routes
         controller: 'HomeCtrl',
         pageTitle: 'Welcome',
         activeTab: '#home-tab'

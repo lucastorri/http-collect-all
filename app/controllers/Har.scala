@@ -4,7 +4,7 @@ import play.api.mvc.Controller
 import org.apache.commons.codec.binary.Base64.encodeBase64
 import javax.crypto.spec.SecretKeySpec
 import javax.crypto.Mac
-import play.api.libs.ws.{Response, WS}
+import play.api.libs.ws.WS
 import concurrent.Future
 import play.api.libs.json.Json
 import play.api.libs.Jsonp
@@ -12,6 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Har extends Controller {
 
+  val server = "http://localhost:10230"
   val key = "368cbd806dbe4be9354485ed51b2bd6503cf79db42eea7efa5e8472eab831ae9"
   val algorithm = "HmacSHA1"
 
@@ -38,16 +39,15 @@ object Har extends Controller {
     val mac = Mac.getInstance(algorithm)
     mac.init(secret)
     val message = (fields :+ nonce).mkString("#")
-    println("###MESSAGE", message)
     new String(encodeBase64(mac.doFinal(message.getBytes)))
   }
 
   private def get(path: String, fields: String*)(implicit req: AuthenticatedRequest[_]) =
     for {
-      nonce <- WS.url("http://localhost:10230/nonce")
+      nonce <- WS.url(s"${server}/nonce")
           .get.map(_.body)
       auth <- authorization(nonce, fields: _*)
-      res <- WS.url(s"http://localhost:10230/${path}")
+      res <- WS.url(s"${server}/${path}")
           .withHeaders("X-Nonce" -> nonce, "Authorization" -> auth).get
     } yield res
 
@@ -55,6 +55,6 @@ object Har extends Controller {
     get(s"${req.user.username}/${bucket}", req.user.username, bucket).map(r => Json.parse(r.body))
 
   private def fetchBuckets()(implicit req: AuthenticatedRequest[_]) =
-    get(s"${req.user.username}", req.user.username).map { r => println("###BODY", r.status, r.body); Json.parse(r.body) }
+    get(s"${req.user.username}", req.user.username).map(r => Json.parse(r.body))
 
 }
