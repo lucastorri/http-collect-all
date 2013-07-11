@@ -9,6 +9,8 @@ angular.module('netztee-home', [])
 angular.module('netztee-buckets', ['netztee-routes'])
 .controller('BucketsCtrl', ['$scope', '$http', 'routes', function($scope, $http, routes) {
 
+    $scope.harp = routes.Har.harp;
+
     $http.get(routes.Har.buckets().url)
     .success(function(buckets) {
         $scope.buckets = buckets.buckets;

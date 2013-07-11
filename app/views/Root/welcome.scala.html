@@ -31,27 +31,26 @@
 
     </head>
     <body>
+    <style>
+        body {
+            margin-top: 70px;
+        }
+    </style>
 
         <div class="content pure-g-r">
             <div id="nav" class="header pure-u-1">
-                <a href="#nav" class="nav-menu-button">Menu</a>
-
                 <div class="pure-menu pure-menu-open pure-menu-fixed pure-menu-horizontal nav-inner">
                     <a class="pure-menu-heading" href="/">netztee</a>
                     <ul>
                         <li id="home-tab"><a href="/">Home</a></li>
                         <li class="pure-menu-selected"><a href="#">How to</a></li>
                         <li id="buckets-tab"><a href="/buckets">My Buckets</a></li>
-                        <li><a href="#">About</a></li>
+                        <li><a target="_self" href="/logout">Logout</a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="content pure-u-1" ng-view=""></div>
-
-            <div class="footer pure-u-1">
-                No rights reserved. Yet...
-            </div>
 
         </div>
     </body>

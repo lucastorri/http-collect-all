@@ -1,4 +1,6 @@
-<p>hello</p>
+<h1>Buckets</h1>
 <ul>
-    <li ng-repeat="b in buckets">{{b}}</li>
+    <li ng-repeat="b in buckets">
+        <a target="_blank" ng-href="http://www.softwareishard.com/har/viewer?inputUrl={{harp(b).absoluteURL()}}">{{b}}</a>
+    </li>
 </ul>
