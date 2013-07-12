@@ -122,7 +122,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
 
         }
 
-        if (msg instanceof HttpContent) {
+        if (msg instanceof HttpContent && backendFuture != null) {
             final HttpContent httpContent = (HttpContent) msg;
 
             if (msg instanceof LastHttpContent) {

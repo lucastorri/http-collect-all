@@ -80,7 +80,7 @@ public class RequestData implements Closeable {
 
     private byte[] toByteArray(ByteBuf buf) {
         byte[] b = new byte[buf.readableBytes()];
-        buf.getBytes(0, b);
+        buf.getBytes(buf.readerIndex(), b);
         return b;
     }
 
