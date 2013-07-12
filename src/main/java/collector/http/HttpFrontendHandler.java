@@ -40,7 +40,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         this.reqConf = reqConf;
     }
 
-    private URI createBackendUriFromFrontendReq(HttpRequest req, ChannelHandlerContext ctx) throws Exception {
+    private URI createBackendUriFromFrontendReq(HttpRequest req) throws Exception {
         return new URI(scheme() + host(req) + ":" + reqConf.port() + req.getUri());
     }
 
@@ -72,7 +72,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
-            URI backendUri = createBackendUriFromFrontendReq(req, ctx);
+            URI backendUri = createBackendUriFromFrontendReq(req);
             final HttpRequest backendReq = frontendRequestToBackendRequest(backendUri, req);
             final Channel frontendChannel = ctx.channel();
             reqConf.metadata(user, bucket);

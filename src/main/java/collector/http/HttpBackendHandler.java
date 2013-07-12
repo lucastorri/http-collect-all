@@ -36,15 +36,15 @@ public class HttpBackendHandler extends ChannelInboundMessageHandlerAdapter<Obje
 
         if (msg instanceof LastHttpContent) {
             reqConf.next();
+            if (!keepAlive) {
+                ctx.flush().addListener(ChannelFutureListener.CLOSE);
+                frontend.flush().addListener(ChannelFutureListener.CLOSE);
+            }
         }
     }
 
     @Override
     public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-        if (!keepAlive) {
-            ctx.flush().addListener(ChannelFutureListener.CLOSE);
-            frontend.flush().addListener(ChannelFutureListener.CLOSE);
-        }
     }
 
     @Override
