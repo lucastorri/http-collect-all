@@ -3,18 +3,39 @@ angular.module('netztee-routes', [])
 
 angular.module('netztee-home', [])
 .controller('HomeCtrl', ['$scope', function($scope) {
-
 }]);
 
 angular.module('netztee-buckets', ['netztee-routes'])
+.directive('har', function() {
+    return {
+        restrict: 'A',
+        scope: {
+            har: '='
+        },
+        link: function($scope, elm, attrs, ctrl) {
+            $scope.$watch('har', function(har) {
+                elm.empty();
+                if (har) {
+                    elm.append('<div class="har" data-har="'+har+'" expand="true" height="400px"></div>');
+                    harInitialize();
+                }
+            });
+        }
+    }
+})
 .controller('BucketsCtrl', ['$scope', '$http', 'routes', function($scope, $http, routes) {
 
     $scope.harp = routes.Har.harp;
+    $scope.har = routes.Har.har;
 
     $http.get(routes.Har.buckets().url)
     .success(function(buckets) {
         $scope.buckets = buckets.buckets;
     });
+
+    $scope.load = function(bucket) {
+        $scope.selected = bucket;
+    };
 
 }]);
 
@@ -38,12 +59,12 @@ angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report'])
         });
     };
 }])
-.factory('$exceptionHandler', ['$injector', function($injector) {
+/*.factory('$exceptionHandler', ['$injector', function($injector) {
     return function (e, cause) {
         var report = $injector.get('report');
         report.error(e.stack);
     };
-}])
+}])*/
 .config(['$locationProvider', function($locationProvider) {
     $locationProvider.html5Mode(true).hashPrefix('!');
 }])
