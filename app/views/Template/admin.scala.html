@@ -1,0 +1,43 @@
+<style>
+    .table-sort-up {
+        border-top:5px solid #444444;
+    }
+
+    .table-sort-down {
+        border-bottom:5px solid #444444;
+    }
+
+    .table-sort-down,
+    .table-sort-up {
+        width:0px;
+        height:0px;
+        border-left:5px solid transparent;
+        border-right:5px solid transparent;
+        font-size:0px;
+        line-height:0px;
+        top:-2px;
+        position:relative;
+        display:inline-block;
+    }
+</style>
+
+<script type="text/ng-template" id="extra-column">
+    <a href="" ng-hide="d.active" ng-click="scope.activate(d)">Activate</a>
+    <a href="" ng-show="d.active" ng-click="scope.deactivate(d)">Deactivate</a>
+    <a href="" ng-click="scope.status(d)">Check status</a>
+</script>
+
+<input type="text" ng-model="search" />
+
+<table table-sort="users" table-filter="search">
+    <thead>
+        <tr>
+            <th table-attr="id">Id</th>
+            <th table-attr="fid">Facebook Id</th>
+            <th table-attr="username">Name</th>
+            <th table-attr="active">Active</th>
+            <th table-extra="extra-column"></th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>

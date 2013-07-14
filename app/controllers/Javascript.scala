@@ -7,8 +7,8 @@ import play.core.Router.JavascriptReverseRoute
 
 object Javascript extends Controller {
 
-  def all = Authenticated { implicit request =>
-    Ok(Routes.javascriptRouter("netztee")(selfRoutes:_*)).as("text/javascript")
+  def all = Authenticated { implicit req =>
+    Ok(Routes.javascriptRouter("netztee", Some("netztee.ajax"))(selfRoutes:_*)).as("text/javascript")
   }
 
   val selfRoutes = {

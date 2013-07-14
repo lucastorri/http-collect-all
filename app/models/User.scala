@@ -9,7 +9,8 @@ case class User(
   username: String, 
   firstName: Option[String] = None, 
   middleName: Option[String] = None, 
-  lastName: Option[String] = None) {
+  lastName: Option[String] = None, 
+  active: Boolean) {
 
   def save()(implicit session: DBSession = User.autoSession): User = User.save(this)(session)
 
@@ -22,7 +23,7 @@ object User extends SQLSyntaxSupport[User] {
 
   override val tableName = "users"
 
-  override val columns = Seq("id", "fid", "username", "first_name", "middle_name", "last_name")
+  override val columns = Seq("id", "fid", "username", "first_name", "middle_name", "last_name", "active")
 
   def apply(u: ResultName[User])(rs: WrappedResultSet): User = new User(
     id = rs.long(u.id),
@@ -30,7 +31,8 @@ object User extends SQLSyntaxSupport[User] {
     username = rs.string(u.username),
     firstName = rs.stringOpt(u.firstName),
     middleName = rs.stringOpt(u.middleName),
-    lastName = rs.stringOpt(u.lastName)
+    lastName = rs.stringOpt(u.lastName),
+    active = rs.boolean(u.active)
   )
       
   val u = User.syntax("u")
@@ -68,20 +70,23 @@ object User extends SQLSyntaxSupport[User] {
     username: String,
     firstName: Option[String] = None,
     middleName: Option[String] = None,
-    lastName: Option[String] = None)(implicit session: DBSession = autoSession): User = {
+    lastName: Option[String] = None,
+    active: Boolean)(implicit session: DBSession = autoSession): User = {
     val generatedKey = withSQL {
       insert.into(User).columns(
         column.fid,
         column.username,
         column.firstName,
         column.middleName,
-        column.lastName
+        column.lastName,
+        column.active
       ).values(
         fid,
         username,
         firstName,
         middleName,
-        lastName
+        lastName,
+        active
       )
     }.updateAndReturnGeneratedKey.apply()
 
@@ -91,7 +96,8 @@ object User extends SQLSyntaxSupport[User] {
       username = username,
       firstName = firstName,
       middleName = middleName,
-      lastName = lastName)
+      lastName = lastName,
+      active = active)
   }
 
   def save(m: User)(implicit session: DBSession = autoSession): User = {
@@ -102,7 +108,8 @@ object User extends SQLSyntaxSupport[User] {
         u.username -> m.username,
         u.firstName -> m.firstName,
         u.middleName -> m.middleName,
-        u.lastName -> m.lastName
+        u.lastName -> m.lastName,
+        u.active -> m.active
       ).where.eq(u.id, m.id)
     }.update.apply()
     m

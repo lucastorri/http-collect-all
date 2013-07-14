@@ -1,8 +1,131 @@
 angular.module('netztee-routes', [])
-.value('routes', netztee.controllers);
+.factory('routes', ['$http', function($http) {
+    netztee.ajax = function(c) {
+        var config = { method: c.type };
+        delete c.type;
+        for (var k in c) { config[k] = c[k]; }
+        return $http(config);
+    }
+    return netztee.controllers;
+}]);
 
-angular.module('netztee-home', [])
-.controller('HomeCtrl', ['$scope', function($scope) {
+angular.module('netztee-user', ['netztee-routes'])
+.factory('self', ['routes', function(routes) {
+    return routes.Admin.self().ajax();
+}]);
+
+angular.module('netztee-admin', [])
+.directive('tableAttr', function() {
+    return {
+        restrict: 'A',
+        require: '^tableSort',
+        link: function($scope, elm, attrs, ctrl) {
+            var self = attrs.tableAttr;
+            var span = $('<span></span>')
+            ctrl.props.push(self);
+            elm.click(function() {
+                ctrl.sortBy(self);
+                $scope.$apply();
+            });
+            elm.append(span);
+            function update() {
+                span
+                  .removeClass('table-sort-down')
+                  .removeClass('table-sort-up');
+                if ($scope.predicate == self) {
+                    $scope.reverse ?
+                        span.addClass('table-sort-down') :
+                        span.addClass('table-sort-up');
+                }
+            }
+            $scope.$watch('predicate', update);
+            $scope.$watch('reverse', update);
+        }
+    }
+})
+.directive('tableExtra', ['$templateCache', function($templateCache) {
+    return {
+        restrict: 'A',
+        require: '^tableSort',
+        scope: {
+            template: '@tableExtra'
+        },
+        link: function($scope, elm, attrs, ctrl) {
+            ctrl.extra = $templateCache.get($scope.template);
+        }
+    }
+}])
+.directive('tableSort', ['$compile', function($compile) {
+    return {
+        restrict: 'A',
+        controller: function($scope) {
+            $scope.props = [];
+            return $scope;
+        },
+        scope: {
+            data: '=tableSort',
+            search: '=tableFilter'
+        },
+        link: function($scope, elm, attrs, ctrl) {
+            $scope.predicate = undefined;
+            $scope.reverse = false;
+
+            elm.find('tbody').html($compile(
+                '<tr ng-repeat="d in data | filter:search | orderBy:predicate:reverse">' +
+                    '<td ng-repeat="column in props">' +
+                        '{{d[column]}}' +
+                    '</td>' +
+                    (ctrl.extra ? '<td>' + ctrl.extra + '</td>' : '') +
+                '</tr>')($scope, function(srcElm, scope) {
+                    scope.scope = $scope.$parent;
+                }));
+
+            $scope.a = function() {
+            console.log($scope);
+            }
+
+            $scope.sortBy = function(nValue) {
+                $scope.reverse = ($scope.predicate == nValue) ? !$scope.reverse : false;
+                $scope.predicate = nValue;
+            }
+
+        }
+    }
+}])
+.controller('AdminCtrl', ['$scope', 'routes', function($scope, routes) {
+    routes.Admin.users().ajax()
+    .success(function(users) {
+        $scope.users = users.users;
+    });
+
+    $scope.activate = function(user) {
+        routes.Admin.activate(user.username).ajax()
+        .success(function() {
+            user.active = true;
+        });
+    };
+    $scope.deactivate = function(user) {
+        routes.Admin.deactivate(user.username).ajax()
+        .success(function() {
+            user.active = false;
+        });
+    };
+    $scope.status = function(user) {
+        routes.Admin.status(user.username).ajax()
+        .success(function() {
+            user.active = true;
+        })
+        .error(function() {
+            user.active = false;
+        });
+    };
+}])
+
+angular.module('netztee-home', ['netztee-user'])
+.controller('HomeCtrl', ['$scope', 'self', function($scope, self) {
+    self.then(function(self) {
+        $scope.self = self;
+    });
 }]);
 
 angular.module('netztee-buckets', ['netztee-routes'])
@@ -23,12 +146,12 @@ angular.module('netztee-buckets', ['netztee-routes'])
         }
     }
 })
-.controller('BucketsCtrl', ['$scope', '$http', 'routes', function($scope, $http, routes) {
+.controller('BucketsCtrl', ['$scope', 'routes', function($scope, routes) {
 
     $scope.harp = routes.Har.harp;
     $scope.har = routes.Har.har;
 
-    $http.get(routes.Har.buckets().url)
+    routes.Har.buckets().ajax()
     .success(function(buckets) {
         $scope.buckets = buckets.buckets;
     });
@@ -42,7 +165,7 @@ angular.module('netztee-buckets', ['netztee-routes'])
 angular.module('netztee-report', [])
 .value('report', { error: console.log });
 
-angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report'])
+angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report', 'netztee-admin'])
 .provider('requests', function() {
     var requests = { count: 0 };
     this.$get = function() { return requests; };
@@ -79,6 +202,12 @@ angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report'])
 }])
 .config(['$routeProvider', function($routeProvider) {
     $routeProvider
+    .when('/admin', {
+        templateUrl: '/template/admin', //use routes
+        controller: 'AdminCtrl',
+        pageTitle: 'Admin',
+        activeTab: '#admin-tab'
+    })
     .when('/buckets', {
         templateUrl: '/template/buckets', //use routes
         controller: 'BucketsCtrl',

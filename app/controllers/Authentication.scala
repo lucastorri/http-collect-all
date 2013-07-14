@@ -18,23 +18,31 @@ case class AuthenticatedRequest[A](user: User, request: Request[A]) extends Wrap
 trait Authenticated {
 
   type ReqHandler[A] = AuthenticatedRequest[A] => Result
+  type ReqFilter = User => Boolean
 
   protected val _orElse : Result = Forbidden
 
   def user[A](implicit req: Request[A]) =
     req.session.get("id").flatMap(id => User.find(id.toLong))
 
-  def apply[A](p: BodyParser[A])(h: ReqHandler[A]) : Action[A] = Action(p) { implicit req : Request[A] =>
+  def apply[A](p: BodyParser[A], filter: ReqFilter = _ => true)(h: ReqHandler[A]) : Action[A] = Action(p) { implicit req : Request[A] =>
     user
+      .filter(filter)
       .map(u => h(AuthenticatedRequest(u, req)))
       .getOrElse(_orElse)
   }
 
+  def apply(h: => Result) : Action[AnyContent] =
+    apply(parse.anyContent)((_: Request[_]) => h)
+
   def apply(h: ReqHandler[AnyContent]) : Action[AnyContent] =
     apply(parse.anyContent)(h)
 
+  def filter(filter: ReqFilter)(h: => ReqHandler[AnyContent]) : Action[AnyContent] =
+    apply(parse.anyContent, filter)(h)
+
   //def apply(h: => Result) : Action[AnyContent] =
-    //apply(parse.anyContent)((req: Request[AnyContent]) => h)
+  //apply(parse.anyContent)((req: Request[AnyContent]) => h)
 
 }
 object Authenticated extends Authenticated {
@@ -49,7 +57,7 @@ trait Authentication extends Controller {
 
   val clientId = "423110074427115"
   val clientSecret = "9c71342a00df5d674c65aa9a470dc6ac"
-  
+
   val redirectUrl = s"http://localhost:9000${routes.Authentication.auth}" //req host, port and scheme
 
   def loginUrl(nonce: String) = s"http://www.facebook.com/dialog/oauth/?client_id=${clientId}&redirect_uri=${redirectUrl}&state=${nonce}"
@@ -75,24 +83,25 @@ trait Authentication extends Controller {
       fid <- future((userInfo \ "id").asOpt[String])
       username <- future((userInfo \ "username").asOpt[String])
     } yield {
-      val json = extract(userInfo)
+      val json = extractor(userInfo)
       val user = User.findAllBy(sqls.eq(User.column.fid, fid))
         .headOption
         .getOrElse {
-          User.create(
-            fid = fid,
-            username = username,
-            firstName = json("first_name"),
-            middleName = json("middle_name"),
-            lastName = json("last_name"))
-        }
+        User.create(
+          fid = fid,
+          username = username,
+          firstName = json("first_name"),
+          middleName = json("middle_name"),
+          lastName = json("last_name"),
+          active = false)
+      }
       (token, user)
     }
 
     val newSession = user
       .map { case (token, user) =>
-        session + ("fb-token" -> token) + ("id" -> user.id.toString) + ("user" -> user.username)
-      }
+      session + ("fb-token" -> token) + ("id" -> user.id.toString) + ("user" -> user.username)
+    }
 
     Async {
       newSession.fallbackTo(Future(session)).map { session =>
@@ -115,7 +124,7 @@ trait Authentication extends Controller {
   private def userInfo(token: String) : Future[JsValue] =
     get(uInfoUrl(token)).map(r => Json.parse(r.body))
 
-  private def extract(jsValue: JsValue): (String) => Option[String] =
+  private def extractor(jsValue: JsValue): (String) => Option[String] =
     field => (jsValue \ field).asOpt[String]
 
   private def future[A](o: Option[A]) : Future[A] =

@@ -6,5 +6,6 @@ create table users (
     first_name varchar(256),
     middle_name varchar(256),
     last_name varchar(256),
+    active boolean no null,
     primary key (id)
 );
