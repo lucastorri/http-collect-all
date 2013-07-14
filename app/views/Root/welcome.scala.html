@@ -20,7 +20,6 @@
             var scripts = [
                 '//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js',
                 '//cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular.min.js',
-                //'http://www.softwareishard.com/har/viewer/har.js',
                 '@routes.Javascript.all',
                 '@routes.Assets.at("javascripts/netztee.js")'
             ];
@@ -31,16 +30,24 @@
                 });
             });
         </script>
-
     </head>
     <body>
-    <style>
-        body {
-            margin-top: 70px;
-        }
-    </style>
 
-        <div class="content pure-g-r">
+        <style>
+            #app {
+                margin-top: 70px;
+            }
+            #loading {
+                position: fixed;
+                right: 0;
+                top: 57px;
+            }
+        </style>
+
+        <div id="app-loading" ng-hide="appLoaded" ng-init="appLoaded = true">Loading NETZTEE...</div>
+        <div id="loading" ng-cloak="">Loading...</div>
+
+        <div id="app" class="content pure-g-r" ng-cloak="">
             <div id="nav" class="header pure-u-1">
                 <div class="pure-menu pure-menu-open pure-menu-fixed pure-menu-horizontal nav-inner">
                     <a class="pure-menu-heading" href="/">netztee</a>
@@ -55,7 +62,6 @@
             </div>
 
             <div class="content pure-u-1" ng-view=""></div>
-
         </div>
     </body>
 </html>

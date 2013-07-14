@@ -18,7 +18,8 @@ object Admin extends Controller {
           case 200 =>
             req.user.copy(active = true).save()
             Ok
-          case _ => InternalServerError
+          case _ =>
+            InternalServerError
         }
         .fallbackTo(Future(InternalServerError))
     }
@@ -32,7 +33,8 @@ object Admin extends Controller {
           case 200 =>
             req.user.copy(active = false).save()
             Ok
-          case _ => InternalServerError
+          case _ =>
+            InternalServerError
         }
         .fallbackTo(Future(InternalServerError))
     }
@@ -49,15 +51,18 @@ object Admin extends Controller {
           case 404 =>
             req.user.copy(active = false).save()
             NotFound
-          case _ => InternalServerError
+          case _ =>
+            InternalServerError
         }
         .fallbackTo(Future(InternalServerError))
     }
   }
 
   def self = Authenticated { implicit req =>
+    val user = req.user
     Ok(Json.obj(
-      "isAdmin" -> req.user.isAdmin,
+      "isAdmin" -> user.isAdmin,
+      "active" -> req.user.active,
       "username" -> req.user.username))
   }
 

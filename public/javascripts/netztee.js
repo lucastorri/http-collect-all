@@ -123,7 +123,7 @@ angular.module('netztee-admin', [])
 
 angular.module('netztee-home', ['netztee-user'])
 .controller('HomeCtrl', ['$scope', 'self', function($scope, self) {
-    self.then(function(self) {
+    self.success(function(self) {
         $scope.self = self;
     });
 }]);
@@ -173,7 +173,7 @@ angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report', 
 .factory('requestsInterceptor', ['$q', '$window', 'requests', function($q, $window, requests) {
     return function(promise) {
         requests.count--;
-        console.log('loaded ' + requests.count);
+        requests.count == 0 && $('#loading').hide();
         return promise.then(function(response) {
             response.status == 403 && $window.location.reload();
             return response;
@@ -196,7 +196,7 @@ angular.module('netztee', ['netztee-home', 'netztee-buckets', 'netztee-report', 
     var requests = requestsProvider.$get();
     $httpProvider.defaults.transformRequest.push(function(data, headers) {
         requests.count++;
-        console.log('loading... ' + requests.count);
+        $('#loading').show();
         return data;
     });
 }])

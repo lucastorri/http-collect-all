@@ -11,3 +11,13 @@
     <a target="_blank" ng-href="{{har(selected).absoluteURL()}}">HAR file</a>
     <div har="selected && harp(selected).absoluteURL()"></div>
 </div>
+
+<script>
+    (function() {
+    var har = document.createElement("script");
+    har.src = "http://www.softwareishard.com/har/viewer/har.js";
+    har.setAttribute("id", "har");
+    har.setAttribute("async", "true");
+    document.documentElement.firstChild.appendChild(har);
+    })();
+</script>
