@@ -11,8 +11,8 @@ import play.api.libs.ws.WS.WSRequestHolder
 
 object HmacClient {
 
-  val userRegistry = Server("http://10.11.12.13:10111/")
-  val harExport = Server("http://10.11.12.13:10230/")
+  val userRegistry = Server("http://10.11.12.14:10111/")
+  val harExport = Server("http://10.11.12.14:10230/")
   val key = "a7e5cae631be97b94ece34e27d64d20b62039ec2b861133128d6d3a55dc76347"
   val algorithm = "HmacSHA1"
 

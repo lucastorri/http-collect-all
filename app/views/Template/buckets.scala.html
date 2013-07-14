@@ -7,7 +7,7 @@
 
 
 <div ng-show="selected">
-    <a ng-href="http://www.softwareishard.com/har/viewer?inputUrl={{harp(selected).absoluteURL()}}">Full report</a>
+    <a target="_blank" ng-href="http://www.softwareishard.com/har/viewer?inputUrl={{harp(selected).absoluteURL()}}">Full report</a>
     <a target="_blank" ng-href="{{har(selected).absoluteURL()}}">HAR file</a>
     <div har="selected && harp(selected).absoluteURL()"></div>
 </div>
