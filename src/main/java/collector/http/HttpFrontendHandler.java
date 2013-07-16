@@ -53,6 +53,9 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
         Matcher matcher = pattern.matcher(getHost(req));
         matcher.find();
         String destHost = matcher.group(1);
+        /* TODO check for loops
+         * if (destHost.endsWith(serverConf.hostname()) { throw new Exception(); }
+         */
         user = matcher.group(2);
         bucket = matcher.group(3);
         return destHost;
@@ -75,6 +78,7 @@ public class HttpFrontendHandler extends ChannelInboundMessageHandlerAdapter<Obj
             URI backendUri = createBackendUriFromFrontendReq(req);
             final HttpRequest backendReq = frontendRequestToBackendRequest(backendUri, req);
             final Channel frontendChannel = ctx.channel();
+            //TODO log source ip address
             reqConf.metadata(user, bucket);
 
             if (serverConf.users().isRegistered(user)) {
