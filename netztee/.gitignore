@@ -1,0 +1,16 @@
+.settings
+.classpath
+.project
+*.iml
+*.ipr
+*.iws
+.idea
+dist/
+lib_managed/
+project/activator*
+project/boot/
+project/plugins/project/
+target/
+.DS_Store
+sbt
+logs

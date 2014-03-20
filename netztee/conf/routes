@@ -1,0 +1,38 @@
+# Routes
+# ~~~~
+
+# Auth
+GET     /login                            controllers.Authentication.login
+GET     /logout                           controllers.Authentication.logout
+GET     /auth                             controllers.Authentication.auth
+
+
+# Har
+GET     /api/bucket/p/:bucket             controllers.Har.harp(bucket, callback ?= "harp")
+GET     /api/bucket/:bucket               controllers.Har.har(bucket)
+GET     /api/bucket                       controllers.Har.buckets
+
+
+# Admin
+GET     /api/admin/user/self              controllers.Admin.self
+GET     /api/admin/user/:user             controllers.Admin.status(user)
+PUT     /api/admin/user/:user             controllers.Admin.activate(user)
+DELETE  /api/admin/user/:user             controllers.Admin.deactivate(user)
+GET     /apu/admin/user                   controllers.Admin.users
+
+
+# Assets
+GET     /assets/*file                     controllers.Assets.at(path="/public", file)
+
+
+# Templates
+GET     /template/:name                   controllers.Template.template(name)
+
+
+# Javascript
+GET     /api/routes                       controllers.Javascript.all
+
+
+# Root
+GET     /*path                            controllers.Root.index(path)
+GET     /                                 controllers.Root.index(path ?= "")

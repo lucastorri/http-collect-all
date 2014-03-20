@@ -1,0 +1,23 @@
+<h1>Groups</h1>
+<ul>
+    <li ng-repeat="b in buckets">
+        <a href="" ng-click="load(b)">{{b}}</a>
+    </li>
+</ul>
+
+
+<div ng-show="selected">
+    <a target="_blank" ng-href="http://www.softwareishard.com/har/viewer?inputUrl={{harp(selected).absoluteURL()}}">Full report</a>
+    <a target="_blank" ng-href="{{har(selected).absoluteURL()}}">HAR file</a>
+    <div har="selected && harp(selected).absoluteURL()"></div>
+</div>
+
+<script>
+    (function() {
+    var har = document.createElement("script");
+    har.src = "http://www.softwareishard.com/har/viewer/har.js";
+    har.setAttribute("id", "har");
+    har.setAttribute("async", "true");
+    document.documentElement.firstChild.appendChild(har);
+    })();
+</script>

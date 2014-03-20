@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <title>netztee</title>
+
+        <base href="/">
+
+        <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.2.0/pure-min.css">
+        <link rel="stylesheet" href="http://purecss.io/combo/1.3.7?/css/layouts/marketing.css">
+        <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/3.1.1/css/font-awesome.css">
+        <link rel="stylesheet" type="text/css" href="https://rawgithub.com/tilomitra/cssextras/master/css/cssextras.css">
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/headjs/0.99/head.load.min.js"></script>
+        <script>
+            console.log('welcome');
+            var scripts = [
+                '//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js',
+                '//cdnjs.cloudflare.com/ajax/libs/angular.js/1.1.5/angular.min.js',
+                '@routes.Javascript.all',
+                '@routes.Assets.at("javascripts/netztee.js")'
+            ];
+            head.js.apply(this, scripts);
+            head.ready(function() {
+                angular.element(document).ready(function() {
+                    angular.bootstrap(document, ['netztee']);
+                });
+            });
+        </script>
+    </head>
+    <body>
+
+        <style>
+            #app {
+                margin-top: 70px;
+            }
+            #loading {
+                position: fixed;
+                right: 0;
+                top: 57px;
+            }
+        </style>
+
+        <div id="app-loading" ng-hide="appLoaded" ng-init="appLoaded = true">Loading NETZTEE...</div>
+        <div id="loading" ng-cloak="">Loading...</div>
+
+        <div id="app" class="content pure-g-r" ng-cloak="">
+            <div id="nav" class="header pure-u-1">
+                <div class="pure-menu pure-menu-open pure-menu-fixed pure-menu-horizontal nav-inner">
+                    <a class="pure-menu-heading" href="/">netztee</a>
+                    <ul>
+                        <li id="home-tab"><a href="/">Home</a></li>
+                        <li class="pure-menu-selected"><a href="#">How to</a></li>
+                        <li id="buckets-tab"><a href="/buckets">My Traffic</a></li>
+                        <li id="admin-tab"><a href="/admin">Admin</a></li>
+                        <li><a target="_self" href="/logout">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content pure-u-1" ng-view=""></div>
+        </div>
+    </body>
+</html>
