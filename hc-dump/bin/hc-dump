@@ -1,0 +1,29 @@
+#!/bin/bash
+
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]
+do
+  SCRIPT=`readlink "$0"`
+done
+
+SCRIPT_DIR=`dirname "$SCRIPT"`
+OUT_DIR=${1:-.}
+WAIT_INTERVAL=10
+
+#TODO make the following loop inside the js file
+while true
+do
+  node "$SCRIPT_DIR/../lib/export-entry.js" "$OUT_DIR"
+  code="$?"
+
+  case "$code" in
+  0)
+    ;;
+  20)
+    sleep "$WAIT_INTERVAL"
+    ;;
+  *)
+    exit "$code"
+    ;;
+  esac
+done
