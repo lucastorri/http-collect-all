@@ -1,0 +1,34 @@
+set daemon 60
+set logfile /var/log/monit.log
+set idfile /var/lib/monit/id
+set statefile /var/lib/monit/state
+set eventqueue basedir /var/lib/monit/events slots 100
+set httpd port 2812 and use address localhost
+allow localhost
+
+include /etc/monit/conf.d/*
+
+
+check process redis-server with pidfile /var/run/redis/redis-server.pid
+  start program = "/usr/sbin/service redis-server start"
+  stop program = "/usr/sbin/service redis-server stop"
+
+check process mongod with pidfile /var/lib/mongodb/mongod.lock
+  start program = "/usr/sbin/service mongodb start"
+  stop program = "/usr/sbin/service mongodb stop"
+
+check process http-collector with pidfile /var/run/http-collector/http-collector.pid
+  start program = "/usr/sbin/service http-collector start"
+  stop program = "/usr/sbin/service http-collector stop"
+
+check process hc-dump with pidfile /var/run/hc-dump/hc-dump.pid
+  start program = "/usr/sbin/service hc-dump start"
+  stop program = "/usr/sbin/service hc-dump stop"
+
+check process har-export with pidfile /var/run/hc-dump/har-export.pid
+  start program = "/usr/sbin/service har-export start"
+  stop program = "/usr/sbin/service har-export stop"
+
+check process user-registry with pidfile /var/run/hc-dump/user-registry.pid
+  start program = "/usr/sbin/service user-registry start"
+  stop program = "/usr/sbin/service user-registry stop"
